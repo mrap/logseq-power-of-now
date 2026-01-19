@@ -2,9 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
+html {
   background-color: transparent;
 }
+
+body {
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
 #root {
-  @apply w-screen h-screen;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Bottom Bar */
+.power-of-now-bar {
+  background-color: rgba(25, 25, 25, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #e0e0e0;
+}
+
+/* Bar Header - clickable to collapse/expand */
+.bar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background-color: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bar-header:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.bar-title {
+  font-weight: 600;
+  color: #22c55e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bar-count {
+  background-color: #22c55e;
+  color: #000;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.bar-toggle {
+  margin-left: auto;
+  color: #666;
+  font-size: 10px;
+}
+
+/* Bar Content */
+.bar-content {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bar-loading {
+  padding: 12px 16px;
+  color: #888;
+  font-size: 12px;
+}
+
+/* Task List */
+.task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Task Item */
+.now-task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.now-task-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.now-task-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #22c55e;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+}
+
+.now-task-text {
+  flex: 1;
+  color: #e0e0e0;
+  line-height: 1.4;
+}
+
+/* Scrollbar styling */
+.bar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bar-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.bar-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }

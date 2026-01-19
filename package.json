@@ -2,6 +2,9 @@
   "name": "logseq-power-of-now",
   "version": "1.0.0",
   "main": "dist/index.html",
+  "browserslist": [
+    "chrome >= 89"
+  ],
   "logseq": {
     "id": "logseq-power-of-now",
     "icon": "logo.png"

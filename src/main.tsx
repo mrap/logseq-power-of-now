@@ -1,18 +1,18 @@
 import "@logseq/libs";
 import React from "react";
 import proxyLogseq from "logseq-proxy";
-import { type Root, createRoot } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
 if (import.meta.env.VITE_MODE === "web") {
-  // run in browser
+  // Run in browser for development
   console.log(
-    "[faiz:] === meta.env.VITE_LOGSEQ_API_SERVER",
+    "[Power of NOW] === meta.env.VITE_LOGSEQ_API_SERVER",
     import.meta.env.VITE_LOGSEQ_API_SERVER
   );
   console.log(
-    `%c[version]: v${__APP_VERSION__}`,
+    `%c[Power of NOW]: v${__APP_VERSION__}`,
     "background-color: #60A5FA; color: white; padding: 4px;"
   );
   proxyLogseq({
@@ -24,20 +24,24 @@ if (import.meta.env.VITE_MODE === "web") {
   });
   renderApp();
 } else {
-  console.log("=== logseq-plugin-react-boilerplate loaded ===");
+  // Run as Logseq plugin
+  console.log("=== Power of NOW plugin loaded ===");
   logseq.ready(() => {
-    logseq.provideModel({
-      show() {
-        renderApp();
-        logseq.showMainUI();
-      },
+    // Position the iframe at the bottom - height will be controlled by the App component
+    logseq.setMainUIInlineStyle({
+      position: "fixed",
+      bottom: "0",
+      left: "0",
+      right: "0",
+      top: "auto",
+      height: "250px",
+      zIndex: "999",
+      background: "transparent",
     });
 
-    logseq.App.registerUIItem("toolbar", {
-      key: "logseq-plugin-react-boilerplate",
-      template:
-        '<a data-on-click="show" class="button"><i class="ti ti-window"></i></a>',
-    });
+    // Render and show the app immediately
+    renderApp();
+    logseq.showMainUI();
   });
 }
 
