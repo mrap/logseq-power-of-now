@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { cleanupStaleTasks } from "../utils/timeTracking";
 
 export interface NowTask {
   uuid: string;
@@ -21,9 +20,11 @@ export function useNowTasks() {
     try {
       const results = await logseq.DB.q("(task NOW)");
 
+      // Log raw block data for debugging
+      console.log("[Power of NOW] Raw block results:", results);
+
       if (!results || !Array.isArray(results)) {
         setTasks([]);
-        cleanupStaleTasks([]);
         return;
       }
 
@@ -34,7 +35,6 @@ export function useNowTasks() {
       }));
 
       setTasks(nowTasks);
-      cleanupStaleTasks(nowTasks.map((t) => t.uuid));
       setError(null);
     } catch (err) {
       console.error("Failed to fetch NOW tasks:", err);

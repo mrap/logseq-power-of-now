@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { NowTask } from "../hooks/useNowTasks";
-import { getElapsedTime } from "../utils/timeTracking";
+import { getElapsedTimeFromContent } from "../utils/timeTracking";
 import { formatElapsedTime } from "../utils/formatElapsedTime";
 
 interface NowTaskItemProps {
@@ -9,11 +9,12 @@ interface NowTaskItemProps {
 
 /**
  * Extracts a clean display text from block content.
- * Removes the NOW marker and any timestamps.
+ * Removes the NOW marker, timestamps, and LOGBOOK section.
  */
 function getDisplayText(content: string): string {
   return content
     .replace(/^NOW\s*/i, "") // Remove NOW marker
+    .replace(/:LOGBOOK:[\s\S]*?:END:/g, "") // Remove LOGBOOK section
     .replace(/\[[\d-]+\s+\w+\s+[\d:]+\]/g, "") // Remove timestamps like [2024-01-19 Fri 10:30]
     .replace(/SCHEDULED:\s*<[^>]+>/g, "") // Remove SCHEDULED
     .replace(/DEADLINE:\s*<[^>]+>/g, "") // Remove DEADLINE
@@ -21,19 +22,21 @@ function getDisplayText(content: string): string {
 }
 
 export function NowTaskItem({ task }: NowTaskItemProps) {
-  const [elapsedTime, setElapsedTime] = useState(() =>
-    formatElapsedTime(getElapsedTime(task.uuid))
-  );
+  const [elapsedTime, setElapsedTime] = useState(() => {
+    const elapsed = getElapsedTimeFromContent(task.content);
+    return elapsed > 0 ? formatElapsedTime(elapsed) : "--";
+  });
 
   // Update elapsed time every minute
   useEffect(() => {
     const updateTime = () => {
-      setElapsedTime(formatElapsedTime(getElapsedTime(task.uuid)));
+      const elapsed = getElapsedTimeFromContent(task.content);
+      setElapsedTime(elapsed > 0 ? formatElapsedTime(elapsed) : "--");
     };
 
     const intervalId = setInterval(updateTime, 60000);
     return () => clearInterval(intervalId);
-  }, [task.uuid]);
+  }, [task.content]);
 
   const handleClick = useCallback(async () => {
     try {

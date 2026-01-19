@@ -1,72 +1,67 @@
-const STORAGE_KEY = "power-of-now-task-times";
+/**
+ * Parses the LOGBOOK section from block content to find active clock entries.
+ *
+ * LOGBOOK format:
+ * :LOGBOOK:
+ * CLOCK: [2024-01-19 Fri 10:30]--[2024-01-19 Fri 10:45] => 00:15:00  (completed)
+ * CLOCK: [2024-01-19 Fri 11:00]  (active - no end time)
+ * :END:
+ */
 
-interface TaskTimes {
-  [uuid: string]: number; // timestamp when task was first seen as NOW
+/**
+ * Parse a Logseq timestamp like "[2024-01-19 Fri 10:30]" to a Date
+ */
+function parseLogseqTimestamp(timestamp: string): Date | null {
+  // Match format: [YYYY-MM-DD Day HH:MM] or [YYYY-MM-DD Day HH:MM:SS]
+  const match = timestamp.match(/\[(\d{4})-(\d{2})-(\d{2})\s+\w+\s+(\d{2}):(\d{2})(?::(\d{2}))?\]/);
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute, second = "0"] = match;
+  return new Date(
+    parseInt(year),
+    parseInt(month) - 1, // Month is 0-indexed
+    parseInt(day),
+    parseInt(hour),
+    parseInt(minute),
+    parseInt(second)
+  );
 }
 
 /**
- * Get all tracked task start times from localStorage
+ * Extract the active clock start time from block content.
+ * An active clock has a start time but no end time (no "--" followed by another timestamp).
  */
-export function getTaskTimes(): TaskTimes {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
+export function getActiveClockStartTime(content: string): Date | null {
+  // Find all CLOCK entries
+  // Active clock: CLOCK: [timestamp] (no "--" after it)
+  // Completed clock: CLOCK: [timestamp]--[timestamp] => duration
+
+  // Match active clocks: "CLOCK: [timestamp]" NOT followed by "--"
+  const activeClockRegex = /CLOCK:\s*(\[\d{4}-\d{2}-\d{2}\s+\w+\s+\d{2}:\d{2}(?::\d{2})?\])(?!\s*--)/g;
+
+  const matches = [...content.matchAll(activeClockRegex)];
+
+  if (matches.length === 0) return null;
+
+  // Return the most recent active clock (last one in the list)
+  const lastMatch = matches[matches.length - 1];
+  return parseLogseqTimestamp(lastMatch[1]);
 }
 
 /**
- * Save task times to localStorage
+ * Get elapsed time in milliseconds from the active clock in the content.
+ * Returns 0 if no active clock is found.
  */
-function saveTaskTimes(times: TaskTimes): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(times));
-  } catch {
-    // localStorage might be full or disabled
-  }
+export function getElapsedTimeFromContent(content: string): number {
+  const startTime = getActiveClockStartTime(content);
+  if (!startTime) return 0;
+
+  return Date.now() - startTime.getTime();
 }
 
 /**
- * Get the start time for a specific task.
- * If not tracked yet, records the current time as the start.
+ * Check if the content has an active clock running
  */
-export function getTaskStartTime(uuid: string): number {
-  const times = getTaskTimes();
-
-  if (!times[uuid]) {
-    times[uuid] = Date.now();
-    saveTaskTimes(times);
-  }
-
-  return times[uuid];
-}
-
-/**
- * Remove tracking for tasks that are no longer NOW.
- * Call this with the current list of NOW task UUIDs to clean up stale entries.
- */
-export function cleanupStaleTasks(currentNowUuids: string[]): void {
-  const times = getTaskTimes();
-  const currentSet = new Set(currentNowUuids);
-
-  let changed = false;
-  for (const uuid of Object.keys(times)) {
-    if (!currentSet.has(uuid)) {
-      delete times[uuid];
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    saveTaskTimes(times);
-  }
-}
-
-/**
- * Get elapsed time in milliseconds for a task
- */
-export function getElapsedTime(uuid: string): number {
-  const startTime = getTaskStartTime(uuid);
-  return Date.now() - startTime;
+export function hasActiveClock(content: string): boolean {
+  return getActiveClockStartTime(content) !== null;
 }
