@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getElapsedTimeFromContent } from "../utils/timeTracking";
 
 export interface NowTask {
   uuid: string;
@@ -7,6 +8,39 @@ export interface NowTask {
 }
 
 const POLL_INTERVAL = 10000; // 10 seconds
+
+/**
+ * Extract priority from content. Returns 'A', 'B', 'C', or null (no priority).
+ * Logseq priority format: [#A], [#B], [#C]
+ */
+function getPriority(content: string): string | null {
+  const match = content.match(/\[#([ABC])\]/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+/**
+ * Compare tasks for sorting: first by priority (A > B > C > none), then by elapsed time (longest first)
+ */
+function compareTasks(a: NowTask, b: NowTask): number {
+  const priorityA = getPriority(a.content);
+  const priorityB = getPriority(b.content);
+
+  // Priority order: A=1, B=2, C=3, none=4
+  const priorityOrder = (p: string | null) => {
+    if (p === "A") return 1;
+    if (p === "B") return 2;
+    if (p === "C") return 3;
+    return 4;
+  };
+
+  const priorityDiff = priorityOrder(priorityA) - priorityOrder(priorityB);
+  if (priorityDiff !== 0) return priorityDiff;
+
+  // Secondary sort: elapsed time (longest first, so descending)
+  const elapsedA = getElapsedTimeFromContent(a.content);
+  const elapsedB = getElapsedTimeFromContent(b.content);
+  return elapsedB - elapsedA;
+}
 
 /**
  * Hook that queries and polls for NOW tasks from Logseq
@@ -33,6 +67,9 @@ export function useNowTasks() {
         content: block.content || "",
         pageId: block.page?.id || 0,
       }));
+
+      // Sort by priority (A > B > C > none), then by elapsed time (longest first)
+      nowTasks.sort(compareTasks);
 
       setTasks(nowTasks);
       setError(null);

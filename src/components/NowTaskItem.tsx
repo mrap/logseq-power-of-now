@@ -9,11 +9,12 @@ interface NowTaskItemProps {
 
 /**
  * Extracts a clean display text from block content.
- * Removes the NOW marker, timestamps, and LOGBOOK section.
+ * Removes the NOW marker, priority, timestamps, and LOGBOOK section.
  */
 function getDisplayText(content: string): string {
   return content
     .replace(/^NOW\s*/i, "") // Remove NOW marker
+    .replace(/\[#[ABC]\]\s*/gi, "") // Remove priority marker [#A], [#B], [#C]
     .replace(/:LOGBOOK:[\s\S]*?:END:/g, "") // Remove LOGBOOK section
     .replace(/\[[\d-]+\s+\w+\s+[\d:]+\]/g, "") // Remove timestamps like [2024-01-19 Fri 10:30]
     .replace(/SCHEDULED:\s*<[^>]+>/g, "") // Remove SCHEDULED
