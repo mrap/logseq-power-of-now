@@ -4,10 +4,12 @@
 
 html {
   background-color: transparent;
+  height: 100%;
 }
 
 body {
   background-color: transparent;
+  height: 100%;
   margin: 0;
   padding: 0;
 }
