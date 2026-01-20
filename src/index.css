@@ -252,3 +252,112 @@ body {
   font-size: 12px;
   text-align: center;
 }
+
+/* Today View Groups */
+.today-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.today-group:first-child {
+  border-top: none;
+}
+
+.today-group-header {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Today Task Item */
+.today-task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.today-task-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.today-task-text {
+  flex: 1;
+  color: #e0e0e0;
+  line-height: 1.4;
+}
+
+/* Today Task Checkbox */
+.today-task-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #555;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.today-task-checkbox:hover {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.today-task-checkbox:active {
+  transform: scale(0.9);
+}
+
+.today-task-checkbox.completing {
+  border-color: #22c55e;
+  background-color: #22c55e;
+  cursor: default;
+}
+
+.today-task-checkbox:disabled {
+  opacity: 0.6;
+}
+
+/* Today Task Indicators */
+.today-task-indicator {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 50px;
+}
+
+.today-task-indicator-now {
+  color: #22c55e;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-task-indicator-todo {
+  color: #3b82f6;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.today-task-indicator-later {
+  color: #8b5cf6;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.today-task-indicator-waiting {
+  color: #f59e0b;
+}
+
+/* Reference indicator for ((uuid)) sourced tasks */
+.today-task-item.is-referenced::before {
+  content: "↗";
+  font-size: 10px;
+  color: #666;
+  margin-right: -4px;
+}
