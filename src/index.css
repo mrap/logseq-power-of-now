@@ -166,6 +166,38 @@ body {
   line-height: 1.4;
 }
 
+/* Task Checkbox */
+.now-task-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #555;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.now-task-checkbox:hover {
+  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.now-task-checkbox:active {
+  transform: scale(0.9);
+}
+
+.now-task-checkbox.completing {
+  border-color: #22c55e;
+  background-color: #22c55e;
+  cursor: default;
+}
+
+.now-task-checkbox:disabled {
+  opacity: 0.6;
+}
+
 /* Scrollbar styling */
 .bar-content::-webkit-scrollbar {
   width: 6px;

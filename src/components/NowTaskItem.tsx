@@ -27,6 +27,7 @@ export function NowTaskItem({ task }: NowTaskItemProps) {
     const elapsed = getElapsedTimeFromContent(task.content);
     return elapsed > 0 ? formatElapsedTime(elapsed) : "--";
   });
+  const [completing, setCompleting] = useState(false);
 
   // Update elapsed time every minute
   useEffect(() => {
@@ -50,10 +51,34 @@ export function NowTaskItem({ task }: NowTaskItemProps) {
     }
   }, [task.pageId, task.uuid]);
 
+  const handleComplete = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation(); // Don't trigger navigation
+      if (completing) return;
+
+      setCompleting(true);
+      try {
+        // Replace NOW with DONE in the content
+        const newContent = task.content.replace(/^NOW\s*/i, "DONE ");
+        await logseq.Editor.updateBlock(task.uuid, newContent);
+      } catch (err) {
+        console.error("Failed to complete task:", err);
+        setCompleting(false);
+      }
+    },
+    [task.uuid, task.content, completing]
+  );
+
   const displayText = getDisplayText(task.content);
 
   return (
     <div className="now-task-item" onClick={handleClick}>
+      <button
+        className={`now-task-checkbox ${completing ? "completing" : ""}`}
+        onClick={handleComplete}
+        disabled={completing}
+        title="Mark as done"
+      />
       <span className="now-task-time">{elapsedTime}</span>
       <span className="now-task-text">{displayText || "Untitled task"}</span>
     </div>
