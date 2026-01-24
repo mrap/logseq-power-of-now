@@ -361,3 +361,200 @@ body {
   color: #666;
   margin-right: -4px;
 }
+
+/* Badge for resurfaced count */
+.bar-badge {
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+/* Snoozed View Groups */
+.snoozed-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.snoozed-group:first-child {
+  border-top: none;
+}
+
+.snoozed-group-header {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.snoozed-group-header.resurfaced {
+  color: #ef4444;
+}
+
+.snoozed-group-header.pending {
+  color: #666;
+}
+
+/* Snoozed Task Item */
+.snoozed-task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.snoozed-task-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.snoozed-task-item.resurfaced {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.snoozed-task-item.resurfaced:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.snoozed-task-item.pending {
+  opacity: 0.7;
+}
+
+.snoozed-task-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.snoozed-task-text {
+  color: #e0e0e0;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snoozed-task-timing {
+  font-size: 11px;
+  color: #888;
+}
+
+.snoozed-task-item.resurfaced .snoozed-task-timing {
+  color: #ef4444;
+}
+
+/* Snoozed Task Unsnooze Button */
+.snoozed-task-unsnooze {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.snoozed-task-unsnooze:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.snoozed-task-unsnooze.unsnoozing {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.snoozed-task-unsnooze:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Snooze Modal */
+.snooze-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.snooze-modal {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 16px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.snooze-modal-header {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snooze-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.snooze-modal-input:focus {
+  border-color: #22c55e;
+}
+
+.snooze-modal-input.error {
+  border-color: #ef4444;
+}
+
+.snooze-modal-input::placeholder {
+  color: #666;
+}
+
+.snooze-modal-preview {
+  margin-top: 8px;
+  min-height: 20px;
+  font-size: 12px;
+}
+
+.snooze-modal-preview-text {
+  color: #22c55e;
+}
+
+.snooze-modal-error {
+  color: #ef4444;
+}
+
+.snooze-modal-hint {
+  color: #666;
+}

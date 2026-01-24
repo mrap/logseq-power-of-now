@@ -39,6 +39,30 @@ if (import.meta.env.VITE_MODE === "web") {
       background: "transparent",
     });
 
+    // Register snooze keyboard shortcut
+    logseq.App.registerCommandPalette(
+      {
+        key: "snooze-current-block",
+        label: "Snooze current block",
+        keybinding: { binding: "ctrl+s" },
+      },
+      async () => {
+        const block = await logseq.Editor.getCurrentBlock();
+        if (block) {
+          // Dispatch custom event to React app with block info
+          const event = new CustomEvent("power-of-now:snooze-block", {
+            detail: {
+              uuid: block.uuid,
+              content: block.content || "",
+            },
+          });
+          window.dispatchEvent(event);
+        } else {
+          logseq.UI.showMsg("No block selected", "warning");
+        }
+      }
+    );
+
     // Render and show the app immediately
     renderApp();
     logseq.showMainUI();
