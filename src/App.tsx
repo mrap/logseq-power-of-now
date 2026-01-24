@@ -34,6 +34,8 @@ const App = () => {
     pendingTasks,
     loading: snoozedLoading,
     refetch: refetchSnoozed,
+    unreadCount,
+    markAllSeen,
   } = useSnoozedTasks();
   const [collapsed, setCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
@@ -130,14 +132,17 @@ const App = () => {
           </button>
           <button
             className={`view-toggle-btn ${viewMode === "SNOOZED" ? "active" : ""}`}
-            onClick={() => setViewMode("SNOOZED")}
+            onClick={() => {
+              setViewMode("SNOOZED");
+              markAllSeen();
+            }}
           >
             SNOOZED
             <span className="bar-count">
               {snoozedLoading ? "..." : snoozedTaskCount}
             </span>
-            {resurfacedTasks.length > 0 && (
-              <span className="bar-badge">{resurfacedTasks.length}</span>
+            {unreadCount > 0 && (
+              <span className="bar-badge">{unreadCount}</span>
             )}
           </button>
         </div>

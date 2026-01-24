@@ -24,5 +24,7 @@ export function getDisplayText(content: string): string {
     .replace(/\[[\d-]+\s+\w+\s+[\d:]+\]/g, "") // Remove timestamps like [2024-01-19 Fri 10:30]
     .replace(/SCHEDULED:\s*<[^>]+>/g, "") // Remove SCHEDULED
     .replace(/DEADLINE:\s*<[^>]+>/g, "") // Remove DEADLINE
+    .replace(/^[a-z-]+::\s*.+$/gim, "") // Remove property lines (key:: value)
+    .replace(/\n+/g, " ") // Collapse multiple newlines into space
     .trim();
 }

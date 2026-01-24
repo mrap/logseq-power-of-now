@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  SnoozeInfo,
   getSnoozeInfo,
   isResurfaced,
   getSnoozeDisplayText,
   getSnoozedAtDisplayText,
 } from "../utils/snooze";
+import { getDisplayText } from "../utils/taskUtils";
 
 export interface SnoozedTask {
   uuid: string;
@@ -28,6 +28,19 @@ export function useSnoozedTasks() {
   const [tasks, setTasks] = useState<SnoozedTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Track which tasks have been notified (persists across polls)
+  const notifiedUuidsRef = useRef<Set<string>>(new Set());
+
+  // Track which tasks user has "seen" by viewing SNOOZED tab
+  const [seenUuids, setSeenUuids] = useState<Set<string>>(new Set());
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const fetchSnoozedTasks = useCallback(async () => {
     try {
@@ -100,6 +113,36 @@ export function useSnoozedTasks() {
   const resurfacedTasks = tasks.filter((t) => t.isResurfaced);
   const pendingTasks = tasks.filter((t) => !t.isResurfaced);
 
+  // Show notifications for newly resurfaced tasks
+  useEffect(() => {
+    for (const task of resurfacedTasks) {
+      if (!notifiedUuidsRef.current.has(task.uuid)) {
+        const preview = getDisplayText(task.content).substring(0, 40) || "Untitled task";
+
+        // Show Logseq toast
+        logseq.UI.showMsg(`Task resurfaced: ${preview}`, "info");
+
+        // Show native Mac notification
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification("Task Resurfaced", {
+            body: preview,
+            silent: false,
+          });
+        }
+
+        notifiedUuidsRef.current.add(task.uuid);
+      }
+    }
+  }, [resurfacedTasks]);
+
+  // Function to mark all as seen (called when viewing SNOOZED tab)
+  const markAllSeen = useCallback(() => {
+    setSeenUuids(new Set(resurfacedTasks.map((t) => t.uuid)));
+  }, [resurfacedTasks]);
+
+  // Unread = resurfaced but not yet seen
+  const unreadCount = resurfacedTasks.filter((t) => !seenUuids.has(t.uuid)).length;
+
   return {
     tasks,
     resurfacedTasks,
@@ -107,5 +150,7 @@ export function useSnoozedTasks() {
     loading,
     error,
     refetch: fetchSnoozedTasks,
+    unreadCount,
+    markAllSeen,
   };
 }
