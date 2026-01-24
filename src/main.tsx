@@ -46,7 +46,10 @@ if (import.meta.env.VITE_MODE === "web") {
 }
 
 function renderApp() {
-  const root = createRoot(document.getElementById("root")!);
+  const rootElement = document.getElementById("root")!;
+  // Clear any stale content from previous plugin session
+  rootElement.innerHTML = "";
+  const root = createRoot(rootElement);
   root.render(
     <React.StrictMode>
       <App />
