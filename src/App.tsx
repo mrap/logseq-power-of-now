@@ -239,6 +239,7 @@ const App = () => {
                           key={task.uuid}
                           task={task}
                           onRefetch={refetchSnoozed}
+                          onResnooze={handleSnooze}
                         />
                       ))}
                     </div>
@@ -251,6 +252,7 @@ const App = () => {
                           key={task.uuid}
                           task={task}
                           onRefetch={refetchSnoozed}
+                          onResnooze={handleSnooze}
                         />
                       ))}
                     </div>
