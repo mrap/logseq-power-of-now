@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { usePolling } from "./usePolling";
 import { getElapsedTimeFromContent } from "../utils/timeTracking";
 import { getPriority, priorityOrder } from "../utils/priority";
 
@@ -7,8 +8,6 @@ export interface NowTask {
   content: string;
   pageId: number;
 }
-
-const POLL_INTERVAL = 10000; // 10 seconds
 
 /**
  * Compare tasks for sorting: first by priority (A > B > C > none), then by elapsed time (longest first)
@@ -29,50 +28,28 @@ function compareTasks(a: NowTask, b: NowTask): number {
  * Hook that queries and polls for NOW tasks from Logseq
  */
 export function useNowTasks() {
-  const [tasks, setTasks] = useState<NowTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useCallback(async (): Promise<NowTask[]> => {
+    const results = await logseq.DB.q("(task NOW)");
 
-  const fetchNowTasks = useCallback(async () => {
-    try {
-      const results = await logseq.DB.q("(task NOW)");
+    console.log("[Power of NOW] Raw block results:", results);
 
-      // Log raw block data for debugging
-      console.log("[Power of NOW] Raw block results:", results);
-
-      if (!results || !Array.isArray(results)) {
-        setTasks([]);
-        return;
-      }
-
-      const nowTasks: NowTask[] = results.map((block: any) => ({
-        uuid: block.uuid,
-        content: block.content || "",
-        pageId: block.page?.id || 0,
-      }));
-
-      // Sort by priority (A > B > C > none), then by elapsed time (longest first)
-      nowTasks.sort(compareTasks);
-
-      setTasks(nowTasks);
-      setError(null);
-    } catch (err) {
-      console.error("Failed to fetch NOW tasks:", err);
-      setError("Failed to fetch tasks");
-    } finally {
-      setLoading(false);
+    if (!results || !Array.isArray(results)) {
+      return [];
     }
+
+    const nowTasks: NowTask[] = results.map((block: any) => ({
+      uuid: block.uuid,
+      content: block.content || "",
+      pageId: block.page?.id || 0,
+    }));
+
+    // Sort by priority (A > B > C > none), then by elapsed time (longest first)
+    nowTasks.sort(compareTasks);
+
+    return nowTasks;
   }, []);
 
-  useEffect(() => {
-    // Initial fetch
-    fetchNowTasks();
+  const { data, loading, error, refetch } = usePolling({ fetcher });
 
-    // Set up polling
-    const intervalId = setInterval(fetchNowTasks, POLL_INTERVAL);
-
-    return () => clearInterval(intervalId);
-  }, [fetchNowTasks]);
-
-  return { tasks, loading, error, refetch: fetchNowTasks };
+  return { tasks: data ?? [], loading, error, refetch };
 }

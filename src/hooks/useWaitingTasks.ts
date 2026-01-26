@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { usePolling } from "./usePolling";
 import { parseScheduledDate } from "../utils/scheduling";
 
 export interface WaitingTask {
@@ -7,8 +8,6 @@ export interface WaitingTask {
   pageId: number;
   scheduledDate: Date | null;
 }
-
-const POLL_INTERVAL = 10000; // 10 seconds
 
 /**
  * Compare waiting tasks for sorting:
@@ -40,50 +39,29 @@ function compareWaitingTasks(a: WaitingTask, b: WaitingTask): number {
  * Returns tasks sorted by scheduled date (soonest first), with unscheduled at bottom.
  */
 export function useWaitingTasks() {
-  const [tasks, setTasks] = useState<WaitingTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useCallback(async (): Promise<WaitingTask[]> => {
+    const results = await logseq.DB.q("(task WAITING)");
 
-  const fetchWaitingTasks = useCallback(async () => {
-    try {
-      const results = await logseq.DB.q("(task WAITING)");
+    console.log("[Power of NOW] WAITING block results:", results);
 
-      console.log("[Power of NOW] WAITING block results:", results);
-
-      if (!results || !Array.isArray(results)) {
-        setTasks([]);
-        return;
-      }
-
-      const waitingTasks: WaitingTask[] = results.map((block: any) => ({
-        uuid: block.uuid,
-        content: block.content || "",
-        pageId: block.page?.id || 0,
-        scheduledDate: parseScheduledDate(block.content || ""),
-      }));
-
-      // Sort: scheduled first (by date ascending), unscheduled at bottom
-      waitingTasks.sort(compareWaitingTasks);
-
-      setTasks(waitingTasks);
-      setError(null);
-    } catch (err) {
-      console.error("Failed to fetch WAITING tasks:", err);
-      setError("Failed to fetch tasks");
-    } finally {
-      setLoading(false);
+    if (!results || !Array.isArray(results)) {
+      return [];
     }
+
+    const waitingTasks: WaitingTask[] = results.map((block: any) => ({
+      uuid: block.uuid,
+      content: block.content || "",
+      pageId: block.page?.id || 0,
+      scheduledDate: parseScheduledDate(block.content || ""),
+    }));
+
+    // Sort: scheduled first (by date ascending), unscheduled at bottom
+    waitingTasks.sort(compareWaitingTasks);
+
+    return waitingTasks;
   }, []);
 
-  useEffect(() => {
-    // Initial fetch
-    fetchWaitingTasks();
+  const { data, loading, error, refetch } = usePolling({ fetcher });
 
-    // Set up polling
-    const intervalId = setInterval(fetchWaitingTasks, POLL_INTERVAL);
-
-    return () => clearInterval(intervalId);
-  }, [fetchWaitingTasks]);
-
-  return { tasks, loading, error, refetch: fetchWaitingTasks };
+  return { tasks: data ?? [], loading, error, refetch };
 }
