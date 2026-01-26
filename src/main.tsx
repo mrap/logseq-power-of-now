@@ -39,6 +39,29 @@ if (import.meta.env.VITE_MODE === "web") {
       background: "transparent",
     });
 
+    // Hide snooze properties and show minimal indicator
+    logseq.provideStyle(`
+      /* Hide snoozed-until and snoozed-at property rows */
+      .block-properties > div:has(a[data-ref="snoozed-until"]),
+      .block-properties > div:has(a[data-ref="snoozed-at"]) {
+        display: none !important;
+      }
+
+      /* Snooze indicator - small orange dot in left margin */
+      .ls-block:has(a[data-ref="snoozed-until"]) > .block-main-container::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #f59e0b;
+        opacity: 0.8;
+      }
+    `);
+
     // Register snooze keyboard shortcut
     logseq.App.registerCommandPalette(
       {
