@@ -6,7 +6,7 @@ import {
   getSnoozeDisplayText,
   getSnoozedAtDisplayText,
 } from "../utils/snooze";
-import { getDisplayText } from "../utils/taskUtils";
+import { getDisplayText, getTaskStatus } from "../utils/taskUtils";
 
 export interface SnoozedTask {
   uuid: string;
@@ -26,6 +26,9 @@ export interface SnoozedTask {
 export function useSnoozedTasks() {
   // Track which tasks have been notified (persists across polls)
   const notifiedUuidsRef = useRef<Set<string>>(new Set());
+
+  // Track DONE tasks for delayed cleanup
+  const doneTasksRef = useRef<Map<string, { content: string; doneAt: number }>>(new Map());
 
   // Track which tasks user has "seen" by viewing SNOOZED tab
   const [seenUuids, setSeenUuids] = useState<Set<string>>(new Set());
@@ -50,16 +53,35 @@ export function useSnoozedTasks() {
     const snoozedTasks: SnoozedTask[] = [];
 
     for (const block of results) {
+      const content = block.content || "";
+      const status = getTaskStatus(content);
+
+      // Skip DONE tasks (status is null for non-active tasks)
+      // Track them for delayed cleanup
+      if (status === null) {
+        const existing = doneTasksRef.current.get(block.uuid);
+        if (!existing) {
+          doneTasksRef.current.set(block.uuid, {
+            content,
+            doneAt: Date.now(),
+          });
+        }
+        continue;
+      }
+
+      // Remove from done tracking if status changed back to active
+      doneTasksRef.current.delete(block.uuid);
+
       const snoozeInfo = getSnoozeInfo({
         uuid: block.uuid,
-        content: block.content || "",
+        content,
         properties: block.properties,
       });
 
       if (snoozeInfo) {
         snoozedTasks.push({
           uuid: block.uuid,
-          content: block.content || "",
+          content,
           pageId: block.page?.id || 0,
           snoozeUntil: snoozeInfo.until,
           snoozedAt: snoozeInfo.createdAt,
@@ -113,6 +135,19 @@ export function useSnoozedTasks() {
       }
     }
   }, [resurfacedTasks]);
+
+  // Clean up snooze properties from DONE tasks after 5 seconds
+  useEffect(() => {
+    const now = Date.now();
+    for (const [uuid, info] of doneTasksRef.current) {
+      if (now - info.doneAt >= 5000) {
+        // Remove snooze properties from the block
+        logseq.Editor.removeBlockProperty(uuid, "snoozed-until");
+        logseq.Editor.removeBlockProperty(uuid, "snoozed-at");
+        doneTasksRef.current.delete(uuid);
+      }
+    }
+  }, [data]);
 
   // Function to mark all as seen (called when viewing SNOOZED tab)
   const markAllSeen = useCallback(() => {
