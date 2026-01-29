@@ -220,6 +220,18 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Tag highlighting (#tag) */
+.task-tag {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* Page reference highlighting ([[page]]) */
+.task-page-ref {
+  color: #22c55e;
+  font-weight: 500;
+}
+
 .task-secondary {
   font-size: 11px;
   color: #888;

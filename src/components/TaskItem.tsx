@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { getDisplayText } from "../utils/taskUtils";
+import { formatContentWithHighlights } from "../utils/formatContent";
 
 interface TaskItemProps {
   uuid: string;
@@ -130,7 +131,9 @@ export function TaskItem({
       )}
       {leftSlot}
       <div className="task-content">
-        <span className="task-text">{displayText || "Untitled task"}</span>
+        <span className="task-text">
+          {displayText ? formatContentWithHighlights(displayText) : "Untitled task"}
+        </span>
         {secondaryText && (
           <span className="task-secondary">{secondaryText}</span>
         )}
