@@ -149,11 +149,11 @@ export function useTodayTasks() {
 
     console.log("[Power of NOW] Found block references:", referencedUuids.size);
 
-    // Fetch referenced blocks
+    // Fetch referenced blocks with their children
     const referencedBlocks: BlockEntity[] = [];
     for (const uuid of referencedUuids) {
       try {
-        const block = await logseq.Editor.getBlock(uuid);
+        const block = await logseq.Editor.getBlock(uuid, { includeChildren: true });
         if (block) {
           referencedBlocks.push(block as BlockEntity);
         }
@@ -162,6 +162,9 @@ export function useTodayTasks() {
         console.warn("[Power of NOW] Could not fetch block:", uuid);
       }
     }
+
+    // Flatten referenced blocks to include all descendants
+    const flattenedReferencedBlocks = flattenBlocks(referencedBlocks);
 
     // Build task map, deduplicating by uuid
     const taskMap = new Map<string, TodayTask>();
@@ -181,8 +184,8 @@ export function useTodayTasks() {
       }
     }
 
-    // Add referenced tasks (won't overwrite existing)
-    for (const block of referencedBlocks) {
+    // Add referenced tasks and their descendants (won't overwrite existing)
+    for (const block of flattenedReferencedBlocks) {
       const status = getTaskStatus(block.content || "");
       if (status && !taskMap.has(block.uuid)) {
         taskMap.set(block.uuid, {
