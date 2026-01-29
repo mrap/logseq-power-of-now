@@ -8,6 +8,8 @@ import { WaitingTaskItem } from "./components/WaitingTaskItem";
 import { TodayTaskItem } from "./components/TodayTaskItem";
 import { SnoozedTaskItem } from "./components/SnoozedTaskItem";
 import { SnoozeModal } from "./components/SnoozeModal";
+import { EstimateModal } from "./components/EstimateModal";
+import { getEstimateFromBlock } from "./utils/estimate";
 import "./App.css";
 
 type ViewMode = "NOW" | "WAITING" | "TODAY" | "SNOOZED";
@@ -15,6 +17,12 @@ type ViewMode = "NOW" | "WAITING" | "TODAY" | "SNOOZED";
 interface SnoozeTarget {
   uuid: string;
   content: string;
+}
+
+interface EstimateTarget {
+  uuid: string;
+  content: string;
+  currentEstimate: number | null;
 }
 
 const COLLAPSED_HEIGHT = "32px";
@@ -40,6 +48,7 @@ const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
   const [snoozeTarget, setSnoozeTarget] = useState<SnoozeTarget | null>(null);
+  const [estimateTarget, setEstimateTarget] = useState<EstimateTarget | null>(null);
 
   const todayTaskCount =
     todayNowTasks.length + todoLaterTasks.length + todayWaitingTasks.length;
@@ -53,6 +62,24 @@ const App = () => {
     };
     window.addEventListener("power-of-now:snooze-block", handler);
     return () => window.removeEventListener("power-of-now:snooze-block", handler);
+  }, []);
+
+  // Listen for estimate keyboard shortcut event from main.tsx
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ uuid: string; content: string }>;
+      const { uuid, content } = customEvent.detail;
+
+      // Fetch block to get current estimate from properties
+      const block = await logseq.Editor.getBlock(uuid);
+      const currentEstimate = block
+        ? getEstimateFromBlock(block.properties as Record<string, unknown>)
+        : null;
+
+      setEstimateTarget({ uuid, content, currentEstimate });
+    };
+    window.addEventListener("power-of-now:estimate-block", handler);
+    return () => window.removeEventListener("power-of-now:estimate-block", handler);
   }, []);
 
   // Handle snooze action - write properties to block
@@ -79,6 +106,32 @@ const App = () => {
     },
     [refetchSnoozed]
   );
+
+  // Handle estimate action - store estimate as block property
+  const handleEstimate = useCallback(async (blockUuid: string, minutes: number) => {
+    try {
+      await logseq.Editor.upsertBlockProperty(
+        blockUuid,
+        "estimated-time",
+        minutes
+      );
+      logseq.UI.showMsg("Estimate set", "success");
+    } catch (err) {
+      console.error("Failed to set estimate:", err);
+      logseq.UI.showMsg("Failed to set estimate", "error");
+    }
+  }, []);
+
+  // Handle estimate removal - remove estimate property from block
+  const handleRemoveEstimate = useCallback(async (blockUuid: string) => {
+    try {
+      await logseq.Editor.removeBlockProperty(blockUuid, "estimated-time");
+      logseq.UI.showMsg("Estimate removed", "success");
+    } catch (err) {
+      console.error("Failed to remove estimate:", err);
+      logseq.UI.showMsg("Failed to remove estimate", "error");
+    }
+  }, []);
 
   // Dynamically resize the iframe based on collapsed state
   useEffect(() => {
@@ -274,6 +327,18 @@ const App = () => {
           blockContent={snoozeTarget.content}
           onClose={() => setSnoozeTarget(null)}
           onSnooze={handleSnooze}
+        />
+      )}
+
+      {/* Estimate Modal */}
+      {estimateTarget && (
+        <EstimateModal
+          blockUuid={estimateTarget.uuid}
+          blockContent={estimateTarget.content}
+          currentEstimate={estimateTarget.currentEstimate}
+          onClose={() => setEstimateTarget(null)}
+          onEstimate={handleEstimate}
+          onRemove={handleRemoveEstimate}
         />
       )}
     </div>

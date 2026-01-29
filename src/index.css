@@ -712,3 +712,98 @@ body {
 .snooze-modal-hint {
   color: #666;
 }
+
+/* ========================================
+   Estimate Modal
+   ======================================== */
+
+.estimate-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.estimate-modal {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.estimate-modal-header {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.estimate-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.estimate-modal-input:focus {
+  border-color: #3b82f6;
+}
+
+.estimate-modal-input.error {
+  border-color: #ef4444;
+}
+
+.estimate-modal-input::placeholder {
+  color: #666;
+}
+
+.estimate-modal-preview {
+  margin-top: 8px;
+  min-height: 20px;
+  font-size: 12px;
+}
+
+.estimate-modal-preview-text {
+  color: #3b82f6;
+}
+
+.estimate-modal-error {
+  color: #ef4444;
+}
+
+.estimate-modal-hint {
+  color: #666;
+}
+
+.estimate-modal-remove {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 4px;
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.estimate-modal-remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}

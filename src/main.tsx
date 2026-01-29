@@ -39,7 +39,7 @@ if (import.meta.env.VITE_MODE === "web") {
       background: "transparent",
     });
 
-    // Hide snooze properties and show minimal indicator
+    // Hide snooze properties and show indicator; style estimate property
     logseq.provideStyle(`
       /* Hide snoozed-until and snoozed-at property rows */
       .block-properties > div:has(a[data-ref="snoozed-until"]),
@@ -47,18 +47,35 @@ if (import.meta.env.VITE_MODE === "web") {
         display: none !important;
       }
 
-      /* Snooze indicator - small orange dot in left margin */
-      .ls-block:has(a[data-ref="snoozed-until"]) > .block-main-container::before {
-        content: "";
-        position: absolute;
-        left: -8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #f59e0b;
-        opacity: 0.8;
+      /* Snooze indicator - orange ring around bullet */
+      .ls-block[data-refs-self*="snoozed-until"] .bullet-container .bullet,
+      .ls-block[data-refs-self*="snoozed-until"] .bullet-container .bullet::before {
+        box-shadow: 0 0 0 2px #f59e0b;
+      }
+
+      /* Estimate indicator - blue ring around bullet */
+      .ls-block[data-refs-self*="estimated-time"] .bullet-container .bullet,
+      .ls-block[data-refs-self*="estimated-time"] .bullet-container .bullet::before {
+        box-shadow: 0 0 0 2px #3b82f6;
+      }
+
+      /* If block has both snooze and estimate, show both colors (estimate takes priority visually) */
+      .ls-block[data-refs-self*="snoozed-until"][data-refs-self*="estimated-time"] .bullet-container .bullet,
+      .ls-block[data-refs-self*="snoozed-until"][data-refs-self*="estimated-time"] .bullet-container .bullet::before {
+        box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px #f59e0b;
+      }
+
+      /* Style the estimated-time property row */
+      .block-properties > div:has(a[data-ref="estimated-time"]) {
+        background-color: rgba(59, 130, 246, 0.1);
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin: 2px 0;
+      }
+
+      .block-properties > div:has(a[data-ref="estimated-time"]) a[data-ref="estimated-time"] {
+        color: #3b82f6;
+        font-weight: 600;
       }
     `);
 
@@ -74,6 +91,30 @@ if (import.meta.env.VITE_MODE === "web") {
         if (block) {
           // Dispatch custom event to React app with block info
           const event = new CustomEvent("power-of-now:snooze-block", {
+            detail: {
+              uuid: block.uuid,
+              content: block.content || "",
+            },
+          });
+          window.dispatchEvent(event);
+        } else {
+          logseq.UI.showMsg("No block selected", "warning");
+        }
+      }
+    );
+
+    // Register estimate keyboard shortcut
+    logseq.App.registerCommandPalette(
+      {
+        key: "estimate-current-block",
+        label: "Set time estimate for current block",
+        keybinding: { binding: "ctrl+e" },
+      },
+      async () => {
+        const block = await logseq.Editor.getCurrentBlock();
+        if (block) {
+          // Dispatch custom event to React app with block info
+          const event = new CustomEvent("power-of-now:estimate-block", {
             detail: {
               uuid: block.uuid,
               content: block.content || "",
