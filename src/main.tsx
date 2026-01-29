@@ -139,7 +139,7 @@ if (import.meta.env.VITE_MODE === "web") {
 
 /**
  * Set priority marker on the current block.
- * Removes existing priority and inserts new one after task marker if present.
+ * Removes existing priority and inserts new one after header and/or task marker if present.
  */
 async function setPriorityOnCurrentBlock(priority: "A" | "B" | "C") {
   const block = await logseq.Editor.getCurrentBlock();
@@ -153,14 +153,21 @@ async function setPriorityOnCurrentBlock(priority: "A" | "B" | "C") {
   // Remove existing priority marker if any
   let newContent = content.replace(/\[#[ABC]\]\s*/gi, "");
 
-  // Insert priority after task marker (NOW, TODO, LATER, WAITING, DONE) if present
-  const taskMarkerMatch = newContent.match(/^(NOW|TODO|LATER|WAITING|DONE)\s*/i);
-  if (taskMarkerMatch) {
-    const marker = taskMarkerMatch[0];
-    const rest = newContent.slice(marker.length);
-    newContent = `${marker.trimEnd()} [#${priority}] ${rest}`;
+  // Match optional header prefix (# ## ### etc.) and optional task marker
+  const prefixMatch = newContent.match(/^(#{1,6}\s+)?(NOW|TODO|LATER|WAITING|DONE)?\s*/i);
+
+  if (prefixMatch && (prefixMatch[1] || prefixMatch[2])) {
+    const header = prefixMatch[1] || "";
+    const taskMarker = prefixMatch[2] || "";
+    const rest = newContent.slice(prefixMatch[0].length);
+
+    if (taskMarker) {
+      newContent = `${header}${taskMarker} [#${priority}] ${rest}`;
+    } else {
+      newContent = `${header}[#${priority}] ${rest}`;
+    }
   } else {
-    // No task marker - prepend priority
+    // No header or task marker - prepend priority
     newContent = `[#${priority}] ${newContent}`;
   }
 
