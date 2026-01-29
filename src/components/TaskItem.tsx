@@ -46,6 +46,24 @@ export function TaskItem({
 }: TaskItemProps) {
   const [completing, setCompleting] = useState(false);
 
+  // Expand all ancestor blocks so target block is visible
+  const expandAncestors = useCallback(async (blockUuid: string) => {
+    const block = await logseq.Editor.getBlock(blockUuid);
+    if (!block) return;
+
+    // parent can be { id: number } for a block, or just a page reference
+    const parentId = block.parent?.id;
+    if (!parentId) return;
+
+    // Check if parent is a block (not the page itself)
+    const parentBlock = await logseq.Editor.getBlock(parentId);
+    if (parentBlock) {
+      // Expand this parent and continue up the chain
+      await logseq.Editor.setBlockCollapsed(parentBlock.uuid, false);
+      await expandAncestors(parentBlock.uuid);
+    }
+  }, []);
+
   // Click to navigate, shift-click to open in sidebar
   const handleClick = useCallback(
     async (e: React.MouseEvent) => {
@@ -56,6 +74,8 @@ export function TaskItem({
             // Open in sidebar
             await logseq.Editor.openInRightSidebar(uuid);
           } else {
+            // Expand ancestors first so block is visible
+            await expandAncestors(uuid);
             // Navigate to block
             await logseq.Editor.scrollToBlockInPage(page.name, uuid);
           }
@@ -64,7 +84,7 @@ export function TaskItem({
         console.error("Failed to navigate to block:", err);
       }
     },
-    [pageId, uuid]
+    [pageId, uuid, expandAncestors]
   );
 
   // Default completion: replace task marker with DONE
