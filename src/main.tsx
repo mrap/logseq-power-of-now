@@ -86,10 +86,106 @@ if (import.meta.env.VITE_MODE === "web") {
       }
     );
 
+    // Register priority keyboard shortcuts
+    logseq.App.registerCommandPalette(
+      {
+        key: "set-priority-a",
+        label: "Set priority A on current block",
+        keybinding: { binding: "ctrl+1" },
+      },
+      async () => {
+        await setPriorityOnCurrentBlock("A");
+      }
+    );
+
+    logseq.App.registerCommandPalette(
+      {
+        key: "set-priority-b",
+        label: "Set priority B on current block",
+        keybinding: { binding: "ctrl+2" },
+      },
+      async () => {
+        await setPriorityOnCurrentBlock("B");
+      }
+    );
+
+    logseq.App.registerCommandPalette(
+      {
+        key: "set-priority-c",
+        label: "Set priority C on current block",
+        keybinding: { binding: "ctrl+3" },
+      },
+      async () => {
+        await setPriorityOnCurrentBlock("C");
+      }
+    );
+
+    logseq.App.registerCommandPalette(
+      {
+        key: "remove-priority",
+        label: "Remove priority from current block",
+        keybinding: { binding: "ctrl+`" },
+      },
+      async () => {
+        await removePriorityFromCurrentBlock();
+      }
+    );
+
     // Render and show the app immediately
     renderApp();
     logseq.showMainUI();
   });
+}
+
+/**
+ * Set priority marker on the current block.
+ * Removes existing priority and inserts new one after task marker if present.
+ */
+async function setPriorityOnCurrentBlock(priority: "A" | "B" | "C") {
+  const block = await logseq.Editor.getCurrentBlock();
+  if (!block) {
+    logseq.UI.showMsg("No block selected", "warning");
+    return;
+  }
+
+  const content = block.content || "";
+
+  // Remove existing priority marker if any
+  let newContent = content.replace(/\[#[ABC]\]\s*/gi, "");
+
+  // Insert priority after task marker (NOW, TODO, LATER, WAITING, DONE) if present
+  const taskMarkerMatch = newContent.match(/^(NOW|TODO|LATER|WAITING|DONE)\s*/i);
+  if (taskMarkerMatch) {
+    const marker = taskMarkerMatch[0];
+    const rest = newContent.slice(marker.length);
+    newContent = `${marker.trimEnd()} [#${priority}] ${rest}`;
+  } else {
+    // No task marker - prepend priority
+    newContent = `[#${priority}] ${newContent}`;
+  }
+
+  await logseq.Editor.updateBlock(block.uuid, newContent);
+}
+
+/**
+ * Remove priority marker from the current block.
+ */
+async function removePriorityFromCurrentBlock() {
+  const block = await logseq.Editor.getCurrentBlock();
+  if (!block) {
+    logseq.UI.showMsg("No block selected", "warning");
+    return;
+  }
+
+  const content = block.content || "";
+
+  // Remove priority marker and any extra whitespace
+  const newContent = content.replace(/\[#[ABC]\]\s*/gi, "");
+
+  // Only update if content actually changed
+  if (newContent !== content) {
+    await logseq.Editor.updateBlock(block.uuid, newContent);
+  }
 }
 
 function renderApp() {
