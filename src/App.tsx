@@ -325,7 +325,10 @@ const App = () => {
         <SnoozeModal
           blockUuid={snoozeTarget.uuid}
           blockContent={snoozeTarget.content}
-          onClose={() => setSnoozeTarget(null)}
+          onClose={() => {
+            setSnoozeTarget(null);
+            logseq.Editor.restoreEditingCursor();
+          }}
           onSnooze={handleSnooze}
         />
       )}
@@ -336,7 +339,10 @@ const App = () => {
           blockUuid={estimateTarget.uuid}
           blockContent={estimateTarget.content}
           currentEstimate={estimateTarget.currentEstimate}
-          onClose={() => setEstimateTarget(null)}
+          onClose={() => {
+            setEstimateTarget(null);
+            logseq.Editor.restoreEditingCursor();
+          }}
           onEstimate={handleEstimate}
           onRemove={handleRemoveEstimate}
         />
