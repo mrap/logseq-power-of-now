@@ -27,6 +27,7 @@ export function WaitingTaskItem({ task }: WaitingTaskItemProps) {
           {scheduleDisplay}
         </span>
       }
+      secondaryText={task.parentContext}
       className="waiting-task"
     />
   );

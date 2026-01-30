@@ -32,6 +32,7 @@ export function NowTaskItem({ task }: NowTaskItemProps) {
       pageId={task.pageId}
       canComplete={true}
       leftSlot={<span className="task-time">{elapsedTime}</span>}
+      secondaryText={task.parentContext}
       className="now-task"
     />
   );

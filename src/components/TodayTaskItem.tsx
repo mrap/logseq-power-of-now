@@ -71,6 +71,7 @@ export function TodayTaskItem({ task }: TodayTaskItemProps) {
       pageId={task.pageId}
       canComplete={true}
       leftSlot={getIndicator()}
+      secondaryText={task.parentContext}
       variant={task.isReferenced ? "referenced" : "default"}
       className="today-task"
     />

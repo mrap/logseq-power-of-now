@@ -1,12 +1,16 @@
 import { useCallback } from "react";
 import { usePolling } from "./usePolling";
 import { parseScheduledDate } from "../utils/scheduling";
+import { deduplicateHierarchy } from "../utils/hierarchyUtils";
 
 export interface WaitingTask {
   uuid: string;
   content: string;
   pageId: number;
   scheduledDate: Date | null;
+  parentUuid?: string;
+  parentContent?: string;
+  parentContext?: string;
 }
 
 /**
@@ -48,17 +52,42 @@ export function useWaitingTasks() {
       return [];
     }
 
-    const waitingTasks: WaitingTask[] = results.map((block: any) => ({
-      uuid: block.uuid,
-      content: block.content || "",
-      pageId: block.page?.id || 0,
-      scheduledDate: parseScheduledDate(block.content || ""),
-    }));
+    // Build tasks with parent info
+    const waitingTasks: WaitingTask[] = [];
+    for (const block of results as any[]) {
+      // Fetch full block to ensure we have parent info (DB.q may not include it)
+      const fullBlock = await logseq.Editor.getBlock(block.uuid);
+      let parentUuid: string | undefined;
+      let parentContent: string | undefined;
+
+      // Get parent info if parent is a block (not a page)
+      if (fullBlock?.parent?.id) {
+        try {
+          const parentBlock = await logseq.Editor.getBlock(fullBlock.parent.id);
+          if (parentBlock) {
+            parentUuid = parentBlock.uuid;
+            parentContent = parentBlock.content;
+          }
+        } catch {
+          // Parent might be a page, not a block
+        }
+      }
+
+      waitingTasks.push({
+        uuid: block.uuid,
+        content: block.content || "",
+        pageId: block.page?.id || 0,
+        scheduledDate: parseScheduledDate(block.content || ""),
+        parentUuid,
+        parentContent,
+      });
+    }
 
     // Sort: scheduled first (by date ascending), unscheduled at bottom
     waitingTasks.sort(compareWaitingTasks);
 
-    return waitingTasks;
+    // Deduplicate: hide parents when children are in the list
+    return deduplicateHierarchy(waitingTasks);
   }, []);
 
   const { data, loading, error, refetch } = usePolling({ fetcher });

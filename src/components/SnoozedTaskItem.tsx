@@ -131,7 +131,7 @@ export function SnoozedTaskItem({
       content={task.content}
       pageId={task.pageId}
       canComplete={true}
-      secondaryText={`${task.snoozeDisplayText} • ${task.snoozedAtDisplayText}`}
+      secondaryText={task.parentContext || `${task.snoozeDisplayText} • ${task.snoozedAtDisplayText}`}
       rightSlot={actionButtons}
       variant={task.isResurfaced ? "resurfaced" : "pending"}
       className="snoozed-task"

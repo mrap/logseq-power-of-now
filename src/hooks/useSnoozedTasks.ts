@@ -7,6 +7,7 @@ import {
   getSnoozedAtDisplayText,
 } from "../utils/snooze";
 import { getDisplayText, getTaskStatus } from "../utils/taskUtils";
+import { deduplicateHierarchy } from "../utils/hierarchyUtils";
 
 export interface SnoozedTask {
   uuid: string;
@@ -17,6 +18,9 @@ export interface SnoozedTask {
   isResurfaced: boolean;
   snoozeDisplayText: string;
   snoozedAtDisplayText: string;
+  parentUuid?: string;
+  parentContent?: string;
+  parentContext?: string;
 }
 
 /**
@@ -79,6 +83,23 @@ export function useSnoozedTasks() {
       });
 
       if (snoozeInfo) {
+        // Fetch full block to ensure we have parent info (DB.q may not include it)
+        const fullBlock = await logseq.Editor.getBlock(block.uuid);
+        let parentUuid: string | undefined;
+        let parentContent: string | undefined;
+
+        if (fullBlock?.parent?.id) {
+          try {
+            const parentBlock = await logseq.Editor.getBlock(fullBlock.parent.id);
+            if (parentBlock) {
+              parentUuid = parentBlock.uuid;
+              parentContent = parentBlock.content;
+            }
+          } catch {
+            // Parent might be a page, not a block
+          }
+        }
+
         snoozedTasks.push({
           uuid: block.uuid,
           content,
@@ -88,6 +109,8 @@ export function useSnoozedTasks() {
           isResurfaced: isResurfaced(snoozeInfo),
           snoozeDisplayText: getSnoozeDisplayText(snoozeInfo),
           snoozedAtDisplayText: getSnoozedAtDisplayText(snoozeInfo),
+          parentUuid,
+          parentContent,
         });
       }
     }
@@ -104,7 +127,8 @@ export function useSnoozedTasks() {
       return a.snoozeUntil.getTime() - b.snoozeUntil.getTime();
     });
 
-    return snoozedTasks;
+    // Deduplicate: hide parents when children are in the list
+    return deduplicateHierarchy(snoozedTasks);
   }, []);
 
   const { data, loading, error, refetch } = usePolling({ fetcher });

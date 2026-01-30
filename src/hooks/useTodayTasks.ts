@@ -5,6 +5,7 @@ import { getTaskStatus, TaskStatus } from "../utils/taskUtils";
 import { getPriority, priorityOrder } from "../utils/priority";
 import { getElapsedTimeFromContent } from "../utils/timeTracking";
 import { parseScheduledDate } from "../utils/scheduling";
+import { deduplicateHierarchy } from "../utils/hierarchyUtils";
 
 export interface TodayTask {
   uuid: string;
@@ -13,12 +14,16 @@ export interface TodayTask {
   status: TaskStatus;
   isReferenced: boolean;
   createdAt?: number;
+  parentUuid?: string;
+  parentContent?: string;
+  parentContext?: string;
 }
 
 interface BlockEntity {
   uuid: string;
   content: string;
   page?: { id: number };
+  parent?: { id: number };
   children?: BlockEntity[];
   id?: number;
 }
@@ -41,20 +46,24 @@ function extractBlockReferences(content: string): string[] {
 }
 
 /**
- * Flatten a block tree into an array of blocks
+ * Flatten a block tree into an array of blocks, tracking parent info
  */
-function flattenBlocks(blocks: BlockEntity[]): BlockEntity[] {
-  const result: BlockEntity[] = [];
-  function traverse(block: BlockEntity) {
-    result.push(block);
+function flattenBlocks(
+  blocks: BlockEntity[],
+  parentUuid?: string,
+  parentContent?: string
+): Array<BlockEntity & { parentUuid?: string; parentContent?: string }> {
+  const result: Array<BlockEntity & { parentUuid?: string; parentContent?: string }> = [];
+  function traverse(block: BlockEntity, parentUuid?: string, parentContent?: string) {
+    result.push({ ...block, parentUuid, parentContent });
     if (block.children) {
       for (const child of block.children) {
-        traverse(child as BlockEntity);
+        traverse(child as BlockEntity, block.uuid, block.content);
       }
     }
   }
   for (const block of blocks) {
-    traverse(block);
+    traverse(block, parentUuid, parentContent);
   }
   return result;
 }
@@ -180,6 +189,8 @@ export function useTodayTasks() {
           status,
           isReferenced: false,
           createdAt: block.id, // EntityID often correlates with creation order
+          parentUuid: block.parentUuid,
+          parentContent: block.parentContent,
         });
       }
     }
@@ -195,6 +206,8 @@ export function useTodayTasks() {
           status,
           isReferenced: true,
           createdAt: block.id,
+          parentUuid: block.parentUuid,
+          parentContent: block.parentContent,
         });
       }
     }
@@ -219,10 +232,11 @@ export function useTodayTasks() {
       }
     }
 
+    // Sort and deduplicate each group separately
     return {
-      nowTasks: sortNowTasks(now),
-      todoLaterTasks: sortTodoLaterTasks(todoLater),
-      waitingTasks: sortWaitingTasks(waiting),
+      nowTasks: deduplicateHierarchy(sortNowTasks(now)),
+      todoLaterTasks: deduplicateHierarchy(sortTodoLaterTasks(todoLater)),
+      waitingTasks: deduplicateHierarchy(sortWaitingTasks(waiting)),
     };
   }, []);
 
