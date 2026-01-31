@@ -134,8 +134,6 @@ export function useTodayTasks() {
     const today = new Date();
     const pageName = formatLogseqDate(today, dateFormat);
 
-    console.log("[Power of NOW] Today's journal page:", pageName);
-
     // Get blocks from today's journal page
     const pageBlocks = await logseq.Editor.getPageBlocksTree(pageName);
 
@@ -147,16 +145,12 @@ export function useTodayTasks() {
     // Flatten the block tree
     const flatBlocks = flattenBlocks(pageBlocks as BlockEntity[]);
 
-    console.log("[Power of NOW] Found blocks on today's page:", flatBlocks.length);
-
     // Collect all block references from the page
     const referencedUuids = new Set<string>();
     for (const block of flatBlocks) {
       const refs = extractBlockReferences(block.content || "");
       refs.forEach((uuid) => referencedUuids.add(uuid));
     }
-
-    console.log("[Power of NOW] Found block references:", referencedUuids.size);
 
     // Fetch referenced blocks with their children
     const referencedBlocks: BlockEntity[] = [];

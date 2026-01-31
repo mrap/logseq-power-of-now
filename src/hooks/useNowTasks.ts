@@ -35,8 +35,6 @@ export function useNowTasks() {
   const fetcher = useCallback(async (): Promise<NowTask[]> => {
     const results = await logseq.DB.q("(task NOW)");
 
-    console.log("[Power of NOW] Raw block results:", results);
-
     if (!results || !Array.isArray(results)) {
       return [];
     }

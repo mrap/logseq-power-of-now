@@ -48,8 +48,6 @@ export function useSnoozedTasks() {
     // Query blocks with snoozed-until property
     const results = await logseq.DB.q("(property snoozed-until)");
 
-    console.log("[Power of NOW] Snoozed block results:", results);
-
     if (!results || !Array.isArray(results)) {
       return [];
     }

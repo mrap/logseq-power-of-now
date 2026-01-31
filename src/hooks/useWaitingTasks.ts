@@ -46,8 +46,6 @@ export function useWaitingTasks() {
   const fetcher = useCallback(async (): Promise<WaitingTask[]> => {
     const results = await logseq.DB.q("(task WAITING)");
 
-    console.log("[Power of NOW] WAITING block results:", results);
-
     if (!results || !Array.isArray(results)) {
       return [];
     }
