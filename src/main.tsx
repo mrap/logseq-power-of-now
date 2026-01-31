@@ -172,6 +172,18 @@ if (import.meta.env.VITE_MODE === "web") {
       }
     );
 
+    // Register toggle hidden blocks shortcut
+    logseq.App.registerCommandPalette(
+      {
+        key: "toggle-hidden-blocks",
+        label: "Toggle visibility of hidden (done/snoozed) blocks",
+        keybinding: { binding: "ctrl+," },
+      },
+      () => {
+        window.dispatchEvent(new CustomEvent("power-of-now:toggle-visibility"));
+      }
+    );
+
     // Render and show the app immediately
     renderApp();
     logseq.showMainUI();

@@ -3,6 +3,7 @@ import { useNowTasks } from "./hooks/useNowTasks";
 import { useWaitingTasks } from "./hooks/useWaitingTasks";
 import { useTodayTasks } from "./hooks/useTodayTasks";
 import { useSnoozedTasks } from "./hooks/useSnoozedTasks";
+import { useHideBlocks } from "./hooks/useHideBlocks";
 import { NowTaskItem } from "./components/NowTaskItem";
 import { WaitingTaskItem } from "./components/WaitingTaskItem";
 import { TodayTaskItem } from "./components/TodayTaskItem";
@@ -49,6 +50,10 @@ const App = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("TODAY");
   const [snoozeTarget, setSnoozeTarget] = useState<SnoozeTarget | null>(null);
   const [estimateTarget, setEstimateTarget] = useState<EstimateTarget | null>(null);
+  const [hideBlocks, setHideBlocks] = useState(true);
+
+  // Hide snoozed (not resurfaced) blocks in Logseq UI
+  useHideBlocks(hideBlocks);
 
   const todayTaskCount =
     todayNowTasks.length + todoLaterTasks.length + todayWaitingTasks.length;
@@ -80,6 +85,13 @@ const App = () => {
     };
     window.addEventListener("power-of-now:estimate-block", handler);
     return () => window.removeEventListener("power-of-now:estimate-block", handler);
+  }, []);
+
+  // Listen for toggle visibility keyboard shortcut from main.tsx
+  useEffect(() => {
+    const handler = () => setHideBlocks((prev) => !prev);
+    window.addEventListener("power-of-now:toggle-visibility", handler);
+    return () => window.removeEventListener("power-of-now:toggle-visibility", handler);
   }, []);
 
   // Handle snooze action - write properties to block
@@ -199,6 +211,13 @@ const App = () => {
             )}
           </button>
         </div>
+        <button
+          className={`hide-toggle-btn ${hideBlocks ? "hiding" : "showing"}`}
+          onClick={() => setHideBlocks((prev) => !prev)}
+          title={hideBlocks ? "Done/snoozed blocks are hidden. Click to show." : "Showing all blocks. Click to hide done/snoozed."}
+        >
+          {hideBlocks ? "👁️‍🗨️" : "👁️"}
+        </button>
         <span className="bar-toggle" onClick={() => setCollapsed(!collapsed)}>
           {collapsed ? "▲" : "▼"}
         </span>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const DEFAULT_POLL_INTERVAL = 10000; // 10 seconds
+const DEFAULT_POLL_INTERVAL = 5000; // 5 seconds
 const DEFAULT_RETRY_DELAY = 500; // 500ms retry for slow Logseq API initialization
 
 interface UsePollingOptions<T> {
