@@ -33,6 +33,7 @@ export function useHideBlocks(enabled: boolean) {
   const [referenceBlocks, setReferenceBlocks] = useState<HiddenBlock[]>([]);
   const [parentsWithActiveChildren, setParentsWithActiveChildren] = useState<Set<string>>(new Set());
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [activeBlockUuid, setActiveBlockUuid] = useState<string | null>(null);
   const previousBadgeKeysRef = useRef<Set<string>>(new Set());
 
   // Listen for toggle messages from badges in Logseq's main window
@@ -53,6 +54,24 @@ export function useHideBlocks(enabled: boolean) {
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // Track the currently active/editing block
+  useEffect(() => {
+    if (typeof logseq === "undefined") return;
+
+    const fetchActiveBlock = async () => {
+      try {
+        const block = await logseq.Editor.getCurrentBlock();
+        setActiveBlockUuid(block?.uuid ?? null);
+      } catch {
+        setActiveBlockUuid(null);
+      }
+    };
+
+    fetchActiveBlock();
+    const intervalId = setInterval(fetchActiveBlock, 500);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Query DONE tasks with parent info
@@ -271,13 +290,13 @@ export function useHideBlocks(enabled: boolean) {
     const rules: string[] = [];
 
     // Get list of done task UUIDs that should remain hidden
-    // Exclude: expanded children, and parents with active (non-hidden) children
+    // Exclude: expanded children, parents with active (non-hidden) children, and active block
     const hiddenDoneUuids = [
       ...doneTasks
-        .filter((t) => !expandedChildUuids.has(t.uuid) && !parentsWithActiveChildren.has(t.uuid))
+        .filter((t) => !expandedChildUuids.has(t.uuid) && !parentsWithActiveChildren.has(t.uuid) && t.uuid !== activeBlockUuid)
         .map((t) => t.uuid),
       ...referenceBlocks
-        .filter((r) => r.type === "done-ref" && !expandedChildUuids.has(r.uuid))
+        .filter((r) => r.type === "done-ref" && !expandedChildUuids.has(r.uuid) && r.uuid !== activeBlockUuid)
         .map((r) => r.uuid),
     ];
 
@@ -298,13 +317,13 @@ export function useHideBlocks(enabled: boolean) {
     }
 
     // Get list of snoozed UUIDs that should remain hidden
-    // Exclude: expanded children, and parents with active (non-hidden) children
+    // Exclude: expanded children, parents with active (non-hidden) children, and active block
     const hiddenSnoozedUuids = [
       ...pendingTasks
-        .filter((t) => !expandedChildUuids.has(t.uuid) && !parentsWithActiveChildren.has(t.uuid))
+        .filter((t) => !expandedChildUuids.has(t.uuid) && !parentsWithActiveChildren.has(t.uuid) && t.uuid !== activeBlockUuid)
         .map((t) => t.uuid),
       ...referenceBlocks
-        .filter((r) => r.type === "snoozed-ref" && !expandedChildUuids.has(r.uuid))
+        .filter((r) => r.type === "snoozed-ref" && !expandedChildUuids.has(r.uuid) && r.uuid !== activeBlockUuid)
         .map((r) => r.uuid),
     ];
 
@@ -339,7 +358,7 @@ export function useHideBlocks(enabled: boolean) {
     `);
 
     return rules.join("\n");
-  }, [enabled, pendingTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, parentsWithActiveChildren]);
+  }, [enabled, pendingTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, parentsWithActiveChildren, activeBlockUuid]);
 
   // Inject hiding CSS
   useEffect(() => {
