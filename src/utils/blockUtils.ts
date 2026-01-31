@@ -3,6 +3,42 @@ export interface ParentInfo {
   parentContent?: string;
 }
 
+export interface BlockContent {
+  content: string;
+  parentUuid?: string;
+}
+
+/**
+ * Fetches block content and parent info for a set of block UUIDs.
+ * Used to scan visible blocks for references to hidden tasks.
+ */
+export async function fetchBlockContents(
+  uuids: Set<string>
+): Promise<Map<string, BlockContent>> {
+  const results = new Map<string, BlockContent>();
+
+  for (const uuid of uuids) {
+    try {
+      const block = await logseq.Editor.getBlock(uuid);
+      if (block) {
+        let parentUuid: string | undefined;
+        if (block.parent?.id) {
+          const parentBlock = await logseq.Editor.getBlock(block.parent.id);
+          parentUuid = parentBlock?.uuid;
+        }
+        results.set(uuid, {
+          content: block.content || "",
+          parentUuid,
+        });
+      }
+    } catch {
+      // Block may not exist
+    }
+  }
+
+  return results;
+}
+
 /**
  * Fetches parent block info for a given block UUID.
  * Returns empty object if parent is a page (not a block) or doesn't exist.

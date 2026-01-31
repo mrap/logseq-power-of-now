@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useSnoozedTasks } from "./useSnoozedTasks";
 import { useVisibleBlocks } from "./useVisibleBlocks";
+import { extractBlockReferences } from "../utils/hierarchyUtils";
+import { fetchBlockContents } from "../utils/blockUtils";
 
 interface DoneTask {
   uuid: string;
   parentUuid?: string;
+}
+
+interface HiddenBlock {
+  uuid: string;
+  parentUuid?: string;
+  type: "done" | "snoozed" | "done-ref" | "snoozed-ref";
 }
 
 interface ParentSummary {
@@ -22,6 +30,7 @@ export function useHideBlocks(enabled: boolean) {
   const { pendingTasks } = useSnoozedTasks();
   const { visibleUuids } = useVisibleBlocks();
   const [doneTasks, setDoneTasks] = useState<DoneTask[]>([]);
+  const [referenceBlocks, setReferenceBlocks] = useState<HiddenBlock[]>([]);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const previousBadgeKeysRef = useRef<Set<string>>(new Set());
 
@@ -87,6 +96,67 @@ export function useHideBlocks(enabled: boolean) {
     return () => clearInterval(intervalId);
   }, [fetchDoneTasks]);
 
+  // Find blocks that reference done/snoozed tasks
+  useEffect(() => {
+    async function findReferenceBlocks() {
+      if (typeof logseq === "undefined" || !enabled) {
+        setReferenceBlocks((prev) => (prev.length === 0 ? prev : []));
+        return;
+      }
+
+      // Build set of done/snoozed UUIDs
+      const hiddenUuids = new Set<string>([
+        ...doneTasks.map((t) => t.uuid),
+        ...pendingTasks.map((t) => t.uuid),
+      ]);
+
+      if (hiddenUuids.size === 0) {
+        setReferenceBlocks((prev) => (prev.length === 0 ? prev : []));
+        return;
+      }
+
+      // Fetch content for all visible blocks
+      const blockContents = await fetchBlockContents(visibleUuids);
+
+      // Find blocks that reference done/snoozed tasks
+      const refs: HiddenBlock[] = [];
+      for (const [uuid, blockInfo] of blockContents) {
+        // Skip if this block is itself done/snoozed
+        if (hiddenUuids.has(uuid)) continue;
+
+        // Skip if parent is not in visible blocks (would cause selector error)
+        if (blockInfo.parentUuid && !visibleUuids.has(blockInfo.parentUuid)) continue;
+
+        const referencedUuids = extractBlockReferences(blockInfo.content);
+        for (const refUuid of referencedUuids) {
+          if (hiddenUuids.has(refUuid)) {
+            // This block references a done/snoozed task
+            const isDoneRef = doneTasks.some((t) => t.uuid === refUuid);
+            refs.push({
+              uuid,
+              parentUuid: blockInfo.parentUuid,
+              type: isDoneRef ? "done-ref" : "snoozed-ref",
+            });
+            break; // Only count each block once
+          }
+        }
+      }
+
+      // Only update state if refs actually changed (avoid unnecessary re-renders)
+      setReferenceBlocks((prev) => {
+        if (
+          prev.length === refs.length &&
+          prev.every((p, i) => p.uuid === refs[i]?.uuid && p.type === refs[i]?.type)
+        ) {
+          return prev;
+        }
+        return refs;
+      });
+    }
+
+    findReferenceBlocks();
+  }, [enabled, doneTasks, pendingTasks, visibleUuids]);
+
   // Compute parent summaries
   const parentSummaries = useMemo((): ParentSummary[] => {
     if (!enabled) return [];
@@ -117,8 +187,25 @@ export function useHideBlocks(enabled: boolean) {
       }
     }
 
+    // Count reference blocks (treat done-refs as done, snoozed-refs as snoozed)
+    for (const ref of referenceBlocks) {
+      if (ref.parentUuid) {
+        const existing = summaryMap.get(ref.parentUuid) || {
+          parentUuid: ref.parentUuid,
+          doneCount: 0,
+          snoozedCount: 0,
+        };
+        if (ref.type === "done-ref") {
+          existing.doneCount++;
+        } else {
+          existing.snoozedCount++;
+        }
+        summaryMap.set(ref.parentUuid, existing);
+      }
+    }
+
     return Array.from(summaryMap.values());
-  }, [enabled, pendingTasks, doneTasks]);
+  }, [enabled, pendingTasks, doneTasks, referenceBlocks]);
 
   // Get child UUIDs for expanded parents (to exclude from hiding)
   const expandedChildUuids = useMemo(() => {
@@ -137,10 +224,16 @@ export function useHideBlocks(enabled: boolean) {
           uuids.add(task.uuid);
         }
       }
+      // Find reference block children of this parent
+      for (const ref of referenceBlocks) {
+        if (ref.parentUuid === parentUuid) {
+          uuids.add(ref.uuid);
+        }
+      }
     }
 
     return uuids;
-  }, [expandedParents, pendingTasks, doneTasks]);
+  }, [expandedParents, pendingTasks, doneTasks, referenceBlocks]);
 
   // Generate hiding CSS
   const css = useMemo(() => {
@@ -151,13 +244,15 @@ export function useHideBlocks(enabled: boolean) {
     const rules: string[] = [];
 
     // Get list of done task UUIDs that should remain hidden (not in expanded parents)
-    const hiddenDoneUuids = doneTasks
-      .filter((t) => !expandedChildUuids.has(t.uuid))
-      .map((t) => t.uuid);
+    const hiddenDoneUuids = [
+      ...doneTasks.filter((t) => !expandedChildUuids.has(t.uuid)).map((t) => t.uuid),
+      ...referenceBlocks
+        .filter((r) => r.type === "done-ref" && !expandedChildUuids.has(r.uuid))
+        .map((r) => r.uuid),
+    ];
 
-    // Hide DONE blocks - but exclude those in expanded parents
+    // Hide DONE blocks and done-reference blocks
     if (hiddenDoneUuids.length > 0) {
-      // Use specific UUIDs for done blocks too (for proper exclusion)
       const doneSelectors = hiddenDoneUuids
         .map((uuid) => `.ls-block[blockid="${uuid}"]`)
         .join(",\n");
@@ -172,11 +267,15 @@ export function useHideBlocks(enabled: boolean) {
       }
     }
 
-    // Hide snoozed blocks - exclude those in expanded parents
-    const hiddenSnoozedUuids = pendingTasks
-      .filter((t) => !expandedChildUuids.has(t.uuid))
-      .map((t) => t.uuid);
+    // Get list of snoozed UUIDs that should remain hidden (not in expanded parents)
+    const hiddenSnoozedUuids = [
+      ...pendingTasks.filter((t) => !expandedChildUuids.has(t.uuid)).map((t) => t.uuid),
+      ...referenceBlocks
+        .filter((r) => r.type === "snoozed-ref" && !expandedChildUuids.has(r.uuid))
+        .map((r) => r.uuid),
+    ];
 
+    // Hide snoozed blocks and snoozed-reference blocks
     if (hiddenSnoozedUuids.length > 0) {
       const selectors = hiddenSnoozedUuids
         .map((uuid) => `.ls-block[blockid="${uuid}"]`)
@@ -207,7 +306,7 @@ export function useHideBlocks(enabled: boolean) {
     `);
 
     return rules.join("\n");
-  }, [enabled, pendingTasks, doneTasks, expandedChildUuids, expandedParents]);
+  }, [enabled, pendingTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents]);
 
   // Inject hiding CSS
   useEffect(() => {
