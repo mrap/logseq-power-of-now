@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { usePolling } from "./usePolling";
-import { getElapsedTimeFromContent } from "../utils/timeTracking";
-import { getPriority, priorityOrder } from "../utils/priority";
-import { deduplicateHierarchy, TaskWithContext } from "../utils/hierarchyUtils";
+import { deduplicateHierarchy } from "../utils/hierarchyUtils";
+import { fetchParentInfo } from "../utils/blockUtils";
+import { compareNowTasks } from "../utils/taskComparators";
 
 export interface NowTask {
   uuid: string;
@@ -11,21 +11,6 @@ export interface NowTask {
   parentUuid?: string;
   parentContent?: string;
   parentContext?: string;
-}
-
-/**
- * Compare tasks for sorting: first by priority (A > B > C > none), then by elapsed time (longest first)
- */
-function compareTasks(a: NowTask, b: NowTask): number {
-  const priorityDiff =
-    priorityOrder(getPriority(a.content)) -
-    priorityOrder(getPriority(b.content));
-  if (priorityDiff !== 0) return priorityDiff;
-
-  // Secondary sort: elapsed time (longest first, so descending)
-  const elapsedA = getElapsedTimeFromContent(a.content);
-  const elapsedB = getElapsedTimeFromContent(b.content);
-  return elapsedB - elapsedA;
 }
 
 /**
@@ -42,23 +27,7 @@ export function useNowTasks() {
     // Build tasks with parent info
     const nowTasks: NowTask[] = [];
     for (const block of results as any[]) {
-      // Fetch full block to ensure we have parent info (DB.q may not include it)
-      const fullBlock = await logseq.Editor.getBlock(block.uuid);
-      let parentUuid: string | undefined;
-      let parentContent: string | undefined;
-
-      // Get parent info if parent is a block (not a page)
-      if (fullBlock?.parent?.id) {
-        try {
-          const parentBlock = await logseq.Editor.getBlock(fullBlock.parent.id);
-          if (parentBlock) {
-            parentUuid = parentBlock.uuid;
-            parentContent = parentBlock.content;
-          }
-        } catch {
-          // Parent might be a page, not a block
-        }
-      }
+      const { parentUuid, parentContent } = await fetchParentInfo(block.uuid);
 
       nowTasks.push({
         uuid: block.uuid,
@@ -70,7 +39,7 @@ export function useNowTasks() {
     }
 
     // Sort by priority (A > B > C > none), then by elapsed time (longest first)
-    nowTasks.sort(compareTasks);
+    nowTasks.sort(compareNowTasks);
 
     // Deduplicate: hide parents when children are in the list
     return deduplicateHierarchy(nowTasks);

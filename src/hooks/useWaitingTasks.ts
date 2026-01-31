@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { usePolling } from "./usePolling";
 import { parseScheduledDate } from "../utils/scheduling";
 import { deduplicateHierarchy } from "../utils/hierarchyUtils";
+import { fetchParentInfo } from "../utils/blockUtils";
 
 export interface WaitingTask {
   uuid: string;
@@ -53,23 +54,7 @@ export function useWaitingTasks() {
     // Build tasks with parent info
     const waitingTasks: WaitingTask[] = [];
     for (const block of results as any[]) {
-      // Fetch full block to ensure we have parent info (DB.q may not include it)
-      const fullBlock = await logseq.Editor.getBlock(block.uuid);
-      let parentUuid: string | undefined;
-      let parentContent: string | undefined;
-
-      // Get parent info if parent is a block (not a page)
-      if (fullBlock?.parent?.id) {
-        try {
-          const parentBlock = await logseq.Editor.getBlock(fullBlock.parent.id);
-          if (parentBlock) {
-            parentUuid = parentBlock.uuid;
-            parentContent = parentBlock.content;
-          }
-        } catch {
-          // Parent might be a page, not a block
-        }
-      }
+      const { parentUuid, parentContent } = await fetchParentInfo(block.uuid);
 
       waitingTasks.push({
         uuid: block.uuid,

@@ -8,6 +8,7 @@ import {
 } from "../utils/snooze";
 import { getDisplayText, getTaskStatus } from "../utils/taskUtils";
 import { deduplicateHierarchy } from "../utils/hierarchyUtils";
+import { fetchParentInfo } from "../utils/blockUtils";
 
 export interface SnoozedTask {
   uuid: string;
@@ -81,22 +82,7 @@ export function useSnoozedTasks() {
       });
 
       if (snoozeInfo) {
-        // Fetch full block to ensure we have parent info (DB.q may not include it)
-        const fullBlock = await logseq.Editor.getBlock(block.uuid);
-        let parentUuid: string | undefined;
-        let parentContent: string | undefined;
-
-        if (fullBlock?.parent?.id) {
-          try {
-            const parentBlock = await logseq.Editor.getBlock(fullBlock.parent.id);
-            if (parentBlock) {
-              parentUuid = parentBlock.uuid;
-              parentContent = parentBlock.content;
-            }
-          } catch {
-            // Parent might be a page, not a block
-          }
-        }
+        const { parentUuid, parentContent } = await fetchParentInfo(block.uuid);
 
         snoozedTasks.push({
           uuid: block.uuid,

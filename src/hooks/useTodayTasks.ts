@@ -2,10 +2,8 @@ import { useCallback } from "react";
 import { usePolling } from "./usePolling";
 import { formatLogseqDate } from "../utils/dateFormat";
 import { getTaskStatus, TaskStatus } from "../utils/taskUtils";
-import { getPriority, priorityOrder } from "../utils/priority";
-import { getElapsedTimeFromContent } from "../utils/timeTracking";
-import { parseScheduledDate } from "../utils/scheduling";
-import { deduplicateHierarchy } from "../utils/hierarchyUtils";
+import { deduplicateHierarchy, extractBlockReferences } from "../utils/hierarchyUtils";
+import { compareNowTasks, compareWaitingTasks, comparePriority } from "../utils/taskComparators";
 
 export interface TodayTask {
   uuid: string;
@@ -32,17 +30,6 @@ interface TodayTasksData {
   nowTasks: TodayTask[];
   todoLaterTasks: TodayTask[];
   waitingTasks: TodayTask[];
-}
-
-// Regex to match ((uuid)) block references
-const BLOCK_REF_REGEX = /\(\(([a-f0-9-]{36})\)\)/g;
-
-/**
- * Extract all block reference UUIDs from content
- */
-function extractBlockReferences(content: string): string[] {
-  const matches = [...content.matchAll(BLOCK_REF_REGEX)];
-  return matches.map((m) => m[1]);
 }
 
 /**
@@ -72,16 +59,7 @@ function flattenBlocks(
  * Sort NOW tasks: priority first, then elapsed time (longest first)
  */
 function sortNowTasks(tasks: TodayTask[]): TodayTask[] {
-  return [...tasks].sort((a, b) => {
-    const priorityDiff =
-      priorityOrder(getPriority(a.content)) -
-      priorityOrder(getPriority(b.content));
-    if (priorityDiff !== 0) return priorityDiff;
-
-    const elapsedA = getElapsedTimeFromContent(a.content);
-    const elapsedB = getElapsedTimeFromContent(b.content);
-    return elapsedB - elapsedA;
-  });
+  return [...tasks].sort(compareNowTasks);
 }
 
 /**
@@ -89,9 +67,7 @@ function sortNowTasks(tasks: TodayTask[]): TodayTask[] {
  */
 function sortTodoLaterTasks(tasks: TodayTask[]): TodayTask[] {
   return [...tasks].sort((a, b) => {
-    const priorityDiff =
-      priorityOrder(getPriority(a.content)) -
-      priorityOrder(getPriority(b.content));
+    const priorityDiff = comparePriority(a, b);
     if (priorityDiff !== 0) return priorityDiff;
 
     // Older first (smaller createdAt value)
@@ -103,22 +79,7 @@ function sortTodoLaterTasks(tasks: TodayTask[]): TodayTask[] {
  * Sort WAITING tasks: priority first, then scheduled date (soonest first), unscheduled at bottom
  */
 function sortWaitingTasks(tasks: TodayTask[]): TodayTask[] {
-  return [...tasks].sort((a, b) => {
-    const priorityDiff =
-      priorityOrder(getPriority(a.content)) -
-      priorityOrder(getPriority(b.content));
-    if (priorityDiff !== 0) return priorityDiff;
-
-    const schedA = parseScheduledDate(a.content);
-    const schedB = parseScheduledDate(b.content);
-
-    if (schedA && schedB) {
-      return schedA.getTime() - schedB.getTime();
-    }
-    if (schedA) return -1;
-    if (schedB) return 1;
-    return 0;
-  });
+  return [...tasks].sort(compareWaitingTasks);
 }
 
 /**
