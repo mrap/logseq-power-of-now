@@ -47,22 +47,13 @@ if (import.meta.env.VITE_MODE === "web") {
         display: none !important;
       }
 
-      /* Snooze indicator - orange ring around bullet */
-      .ls-block[data-refs-self*="snoozed-until"] .bullet-container .bullet,
-      .ls-block[data-refs-self*="snoozed-until"] .bullet-container .bullet::before {
-        box-shadow: 0 0 0 2px #f59e0b;
-      }
+      /* Snooze indicator styling is handled dynamically by useHideBlocks.ts */
+      /* Resurfaced blocks get red styling, pending blocks get gray when visible */
 
       /* Estimate indicator - blue ring around bullet */
       .ls-block[data-refs-self*="estimated-time"] .bullet-container .bullet,
       .ls-block[data-refs-self*="estimated-time"] .bullet-container .bullet::before {
         box-shadow: 0 0 0 2px #3b82f6;
-      }
-
-      /* If block has both snooze and estimate, show both colors (estimate takes priority visually) */
-      .ls-block[data-refs-self*="snoozed-until"][data-refs-self*="estimated-time"] .bullet-container .bullet,
-      .ls-block[data-refs-self*="snoozed-until"][data-refs-self*="estimated-time"] .bullet-container .bullet::before {
-        box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px #f59e0b;
       }
 
       /* Style the estimated-time property row */

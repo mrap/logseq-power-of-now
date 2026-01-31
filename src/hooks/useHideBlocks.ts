@@ -27,7 +27,7 @@ interface ParentSummary {
  * Clicking a badge toggles visibility of that parent's hidden children.
  */
 export function useHideBlocks(enabled: boolean) {
-  const { pendingTasks } = useSnoozedTasks();
+  const { pendingTasks, resurfacedTasks } = useSnoozedTasks();
   const { visibleUuids } = useVisibleBlocks();
   const [doneTasks, setDoneTasks] = useState<DoneTask[]>([]);
   const [referenceBlocks, setReferenceBlocks] = useState<HiddenBlock[]>([]);
@@ -328,8 +328,59 @@ export function useHideBlocks(enabled: boolean) {
       }
     `);
 
+    // Style resurfaced snoozed blocks (urgent - need attention)
+    const resurfacedUuids = resurfacedTasks.map((t) => t.uuid);
+    if (resurfacedUuids.length > 0) {
+      // Block background and left border
+      const resurfacedBlockSelectors = resurfacedUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"]`)
+        .join(",\n");
+      rules.push(`${resurfacedBlockSelectors} {
+        background-color: rgba(239, 68, 68, 0.12) !important;
+        border-left: 5px solid #ef4444 !important;
+        border-radius: 4px;
+        margin-left: -5px;
+        padding-left: 5px;
+      }`);
+
+      // Bullet ring - red with glow
+      const resurfacedBulletSelectors = resurfacedUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"] .bullet-container .bullet`)
+        .join(",\n");
+      rules.push(`${resurfacedBulletSelectors} {
+        box-shadow: 0 0 0 4px #ef4444, 0 0 12px rgba(239, 68, 68, 0.5) !important;
+      }`);
+    }
+
+    // Style pending snoozed blocks (when expanded/visible) - muted appearance
+    const visiblePendingUuids = pendingTasks
+      .filter((t) => expandedChildUuids.has(t.uuid))
+      .map((t) => t.uuid);
+    if (visiblePendingUuids.length > 0) {
+      // Block background and left border
+      const pendingBlockSelectors = visiblePendingUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"]`)
+        .join(",\n");
+      rules.push(`${pendingBlockSelectors} {
+        background-color: rgba(148, 163, 184, 0.08) !important;
+        border-left: 5px solid #94a3b8 !important;
+        border-radius: 4px;
+        margin-left: -5px;
+        padding-left: 5px;
+        opacity: 0.8;
+      }`);
+
+      // Bullet ring - gray
+      const pendingBulletSelectors = visiblePendingUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"] .bullet-container .bullet`)
+        .join(",\n");
+      rules.push(`${pendingBulletSelectors} {
+        box-shadow: 0 0 0 3px #94a3b8 !important;
+      }`);
+    }
+
     return rules.join("\n");
-  }, [enabled, pendingTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, activeBlockUuid]);
+  }, [enabled, pendingTasks, resurfacedTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, activeBlockUuid]);
 
   // Inject hiding CSS
   useEffect(() => {
