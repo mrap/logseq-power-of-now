@@ -2,19 +2,17 @@ import { useCallback } from "react";
 import { usePolling } from "./usePolling";
 import { formatLogseqDate } from "../utils/dateFormat";
 import { getTaskStatus, TaskStatus } from "../utils/taskUtils";
-import { deduplicateHierarchy, extractBlockReferences } from "../utils/hierarchyUtils";
+import {
+  BaseTask,
+  deduplicateHierarchy,
+  extractBlockReferences,
+} from "../utils/hierarchyUtils";
 import { compareNowTasks, compareWaitingTasks, comparePriority } from "../utils/taskComparators";
 
-export interface TodayTask {
-  uuid: string;
-  content: string;
-  pageId: number;
+export interface TodayTask extends BaseTask {
   status: TaskStatus;
   isReferenced: boolean;
   createdAt?: number;
-  parentUuid?: string;
-  parentContent?: string;
-  parentContext?: string;
 }
 
 interface BlockEntity {

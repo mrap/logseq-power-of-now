@@ -1,21 +1,17 @@
 import { getDisplayText } from "./taskUtils";
 
 /**
- * Base task interface with optional hierarchy info
+ * Base task interface with common fields shared by all task types.
+ * parentContext is added by deduplicateHierarchy.
  */
 export interface BaseTask {
   uuid: string;
   content: string;
-  parentUuid?: string; // Tree parent (from block.parent.id)
-  parentContent?: string; // Content of parent block (for reference detection)
-}
-
-/**
- * Task with parent context added after deduplication
- */
-export type TaskWithContext<T extends BaseTask> = T & {
+  pageId: number;
+  parentUuid?: string;
+  parentContent?: string;
   parentContext?: string;
-};
+}
 
 /**
  * Regex to match block references ((uuid))
@@ -49,9 +45,7 @@ export function extractBlockReferences(content: string): string[] {
  *
  * Children get parentContext set to the display text of their parent.
  */
-export function deduplicateHierarchy<T extends BaseTask>(
-  tasks: T[]
-): TaskWithContext<T>[] {
+export function deduplicateHierarchy<T extends BaseTask>(tasks: T[]): T[] {
   if (tasks.length === 0) return [];
 
   // Build lookup structures

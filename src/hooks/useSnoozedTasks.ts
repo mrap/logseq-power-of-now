@@ -7,21 +7,15 @@ import {
   getSnoozedAtDisplayText,
 } from "../utils/snooze";
 import { getDisplayText, getTaskStatus } from "../utils/taskUtils";
-import { deduplicateHierarchy } from "../utils/hierarchyUtils";
+import { BaseTask, deduplicateHierarchy } from "../utils/hierarchyUtils";
 import { fetchParentInfo } from "../utils/blockUtils";
 
-export interface SnoozedTask {
-  uuid: string;
-  content: string;
-  pageId: number;
+export interface SnoozedTask extends BaseTask {
   snoozeUntil: Date;
   snoozedAt: Date;
   isResurfaced: boolean;
   snoozeDisplayText: string;
   snoozedAtDisplayText: string;
-  parentUuid?: string;
-  parentContent?: string;
-  parentContext?: string;
 }
 
 /**
