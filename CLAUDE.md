@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Logseq Power of Now is a Logseq plugin that displays task aggregations from three sources: NOW tasks, WAITING tasks, and today's journal. It provides intelligent sorting, elapsed time tracking, and quick navigation to source blocks.
+Logseq Power of Now is a Logseq plugin that surfaces active work in a persistent bottom bar. It displays tasks from four sources: NOW tasks, WAITING tasks, today's journal, and snoozed tasks with intelligent sorting, time tracking, and focus mode features.
 
 ## Development Commands
 
@@ -23,27 +23,74 @@ pnpm build:web        # Build for web mode
 
 ```
 src/
-├── main.tsx          # Entry point - dual mode (web/plugin), iframe setup
-├── App.tsx           # Main component with NOW/WAITING/TODAY view tabs
-├── components/       # Task item components with click-to-navigate
-├── hooks/            # Data fetching with Logseq.DB.q() and 10s polling
-└── utils/            # Parsing for priorities, scheduling, LOGBOOK clocks
+├── main.tsx          # Entry point - dual mode, keyboard shortcuts, CSS injection
+├── App.tsx           # Main component - view tabs (TODAY/NOW/WAITING/SNOOZED)
+├── components/       # TaskItem base + task-specific wrappers
+├── hooks/            # Layered: usePolling → useTaskQuery → feature hooks
+└── utils/            # Parsing, sorting, formatting utilities
 ```
 
-**Data flow**: Logseq.DB.q() queries → hooks with polling → parsed task data → components → Logseq.Editor API for updates
+**Data flow**: `Logseq.DB.q()` → hooks (5s polling) → parsed/sorted data → components → `Logseq.Editor` API for updates
+
+## Key Engineering Patterns
+
+### Hook Composition
+```
+usePolling        # Core: interval polling with retry
+    ↓
+useTaskQuery      # Layer: query, map, sort, deduplicate
+    ↓
+useNowTasks       # Feature: specific query + comparator
+```
+
+### Slot-based Components
+`TaskItem` provides `leftSlot`, `rightSlot`, and `secondaryText` props. Feature wrappers (`NowTaskItem`, `WaitingTaskItem`, etc.) compose these slots.
+
+### Cross-component Communication
+- No React Context - uses props drilling
+- Custom DOM events for keyboard shortcuts (main.tsx dispatches, App.tsx listens)
+
+### Hierarchy Deduplication
+When parent and child both match a query, parent is hidden (`hierarchyUtils.ts`).
+
+### CSS Injection
+`useHideBlocks` generates CSS to hide done/snoozed blocks, injects via `logseq.provideStyle()`.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action | Implementation |
+|----------|--------|----------------|
+| `Ctrl+S` | Snooze block | `main.tsx:74-95` |
+| `Ctrl+E` | Set estimate | `main.tsx:98-119` |
+| `Ctrl+1/2/3` | Priority A/B/C | `main.tsx:122-153` |
+| `Ctrl+`` ` | Remove priority | `main.tsx:155-164` |
+| `Ctrl+,` | Toggle visibility | `main.tsx:167-176` |
 
 ## Key Patterns
 
-- **Task markers**: NOW, TODO, LATER, WAITING (Logseq-native)
-- **Priority**: [#A], [#B], [#C] markers - sorting is A > B > C > none
+- **Task markers**: NOW, TODO, LATER, WAITING, DONE (Logseq-native)
+- **Priority**: `[#A]`, `[#B]`, `[#C]` markers - sorting is A > B > C > none
 - **Scheduling**: `SCHEDULED: <YYYY-MM-DD Day HH:MM>` format
 - **Time tracking**: LOGBOOK section with CLOCK entries for elapsed time
 - **Block references**: Extracted via `\(\(([a-f0-9-]{36})\)\)` regex
+- **Snooze properties**: `snoozed-until`, `snoozed-at` (ISO 8601)
+- **Estimate property**: `estimated-time` (minutes as integer)
 
 **Sorting rules**:
 - NOW: priority, then elapsed time (longest first)
 - WAITING: priority, then scheduled date (soonest first)
 - TODO/LATER: priority, then creation time (oldest first)
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `main.tsx:74-176` | Keyboard shortcut registration |
+| `App.tsx:32-56` | Hook usage and state |
+| `useTaskQuery.ts` | Generic task query pattern |
+| `useHideBlocks.ts` | CSS generation for hiding |
+| `TaskItem.tsx` | Base component with slots |
+| `taskComparators.ts` | Sorting logic per task type |
 
 ## Release
 
