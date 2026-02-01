@@ -92,6 +92,54 @@ When parent and child both match a query, parent is hidden (`hierarchyUtils.ts`)
 | `TaskItem.tsx` | Base component with slots |
 | `taskComparators.ts` | Sorting logic per task type |
 
+## Documentation Maintenance
+
+**Keep documentation in sync with code changes.** When adding, changing, or removing features, update the relevant docs in the same commit.
+
+### Documentation Files
+
+| File | Purpose | Update When |
+|------|---------|-------------|
+| `docs/PRODUCT.md` | User-facing features, shortcuts, properties | Adding/changing user-visible behavior |
+| `docs/ARCHITECTURE.md` | Engineering patterns, data flow, key files | Changing code structure or patterns |
+| `README.md` | Installation, quick start, feature overview | Major feature additions |
+| `CLAUDE.md` | Development guidance, patterns, key files | Changing development workflows or patterns |
+
+### Writing Feature Documentation
+
+Document features from the user's perspective:
+
+1. **What it does** - One sentence describing the capability
+2. **How to use it** - Keyboard shortcut, UI action, or workflow
+3. **What happens** - Observable result or behavior change
+
+Example for a new feature:
+```markdown
+### Quick Re-snooze
+Re-snooze a resurfaced task with common time intervals.
+- Click the re-snooze button on any resurfaced task in the SNOOZED view
+- Choose from preset options: "1 hour", "Tomorrow 9am", "Next week"
+- Task returns to pending state and disappears from resurfaced list
+```
+
+### Checklist for Feature Changes
+
+**Adding a feature:**
+- [ ] Add to `docs/PRODUCT.md` with user story format
+- [ ] Add keyboard shortcut to shortcuts table (if applicable)
+- [ ] Update `docs/ARCHITECTURE.md` if new patterns introduced
+- [ ] Update `CLAUDE.md` Key Files table if new key files
+
+**Changing a feature:**
+- [ ] Update description in `docs/PRODUCT.md`
+- [ ] Update any affected keyboard shortcuts
+- [ ] Verify examples still accurate
+
+**Removing a feature:**
+- [ ] Remove from `docs/PRODUCT.md`
+- [ ] Remove keyboard shortcut from tables
+- [ ] Remove from `CLAUDE.md` if referenced
+
 ## Release
 
 Push to `main` branch triggers semantic-release CI which creates GitHub releases. Commit messages must follow [semantic-release](https://github.com/semantic-release/semantic-release) specification.
