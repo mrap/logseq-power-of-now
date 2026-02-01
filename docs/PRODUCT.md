@@ -98,6 +98,7 @@ The plugin uses Logseq block properties for persistence:
 
 ### In Logseq Main UI
 
+- **NOW blocks**: Green/emerald left border and background with glowing bullet ring and subtle pulse animation - makes active work immediately recognizable
 - **Resurfaced blocks**: Red left border and background, glowing bullet ring
 - **Pending snoozed blocks**: Gray styling when expanded (normally hidden)
 - **Estimate indicator**: Blue ring around bullet for blocks with estimates

@@ -39,7 +39,7 @@ if (import.meta.env.VITE_MODE === "web") {
       background: "transparent",
     });
 
-    // Hide snooze properties and show indicator; style estimate property
+    // Hide snooze properties and show indicator; style estimate property; NOW pulse animation
     logseq.provideStyle(`
       /* Hide snoozed-until and snoozed-at property rows */
       .block-properties > div:has(a[data-ref="snoozed-until"]),
@@ -49,6 +49,12 @@ if (import.meta.env.VITE_MODE === "web") {
 
       /* Snooze indicator styling is handled dynamically by useHideBlocks.ts */
       /* Resurfaced blocks get red styling, pending blocks get gray when visible */
+
+      /* NOW task pulse animation */
+      @keyframes now-pulse {
+        0%, 100% { background-color: rgba(16, 185, 129, 0.15); }
+        50% { background-color: rgba(16, 185, 129, 0.22); }
+      }
 
       /* Estimate indicator - blue ring around bullet */
       .ls-block[data-refs-self*="estimated-time"] .bullet-container .bullet,

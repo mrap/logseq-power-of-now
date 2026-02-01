@@ -52,8 +52,9 @@ const App = () => {
   const [estimateTarget, setEstimateTarget] = useState<EstimateTarget | null>(null);
   const [hideBlocks, setHideBlocks] = useState(true);
 
-  // Hide snoozed (not resurfaced) blocks in Logseq UI
-  useHideBlocks(hideBlocks);
+  // Hide snoozed (not resurfaced) blocks in Logseq UI and style NOW tasks
+  const nowTaskUuids = nowTasks.map((t) => t.uuid);
+  useHideBlocks(hideBlocks, nowTaskUuids);
 
   const todayTaskCount =
     todayNowTasks.length + todoLaterTasks.length + todayWaitingTasks.length;

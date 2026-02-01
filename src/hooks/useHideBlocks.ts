@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useSnoozedTasks } from "./useSnoozedTasks";
 import { useVisibleBlocks } from "./useVisibleBlocks";
 import { extractBlockReferences } from "../utils/hierarchyUtils";
-import { fetchBlockContents } from "../utils/blockUtils";
+import { fetchBlockContents, getAllAncestorUuids } from "../utils/blockUtils";
 
 interface DoneTask {
   uuid: string;
@@ -25,8 +25,9 @@ interface ParentSummary {
  * Hook that injects CSS to hide done and snoozed (not resurfaced) blocks in Logseq's main UI,
  * and injects summary badges into parent blocks showing hidden children counts.
  * Clicking a badge toggles visibility of that parent's hidden children.
+ * Also applies visual styling to NOW tasks to make them stand out.
  */
-export function useHideBlocks(enabled: boolean) {
+export function useHideBlocks(enabled: boolean, nowTaskUuids: string[] = []) {
   const { pendingTasks, resurfacedTasks } = useSnoozedTasks();
   const { visibleUuids } = useVisibleBlocks();
   const [doneTasks, setDoneTasks] = useState<DoneTask[]>([]);
@@ -34,6 +35,8 @@ export function useHideBlocks(enabled: boolean) {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [activeBlockUuid, setActiveBlockUuid] = useState<string | null>(null);
   const previousBadgeKeysRef = useRef<Set<string>>(new Set());
+  const [activeTaskUuids, setActiveTaskUuids] = useState<Set<string>>(new Set());
+  const [ancestorsOfActive, setAncestorsOfActive] = useState<Set<string>>(new Set());
 
   // Listen for toggle messages from badges in Logseq's main window
   useEffect(() => {
@@ -114,6 +117,42 @@ export function useHideBlocks(enabled: boolean) {
     const intervalId = setInterval(fetchDoneTasks, 5000);
     return () => clearInterval(intervalId);
   }, [fetchDoneTasks]);
+
+  // Query active tasks (NOW, LATER, WAITING) to compute ancestors that shouldn't be hidden
+  const fetchActiveTasks = useCallback(async () => {
+    if (typeof logseq === "undefined") return;
+
+    try {
+      const results = await logseq.DB.q("(task NOW LATER WAITING)");
+      setActiveTaskUuids(new Set((results as { uuid: string }[] | null)?.map((b) => b.uuid) || []));
+    } catch (err) {
+      console.error("[useHideBlocks] Failed to fetch active tasks:", err);
+    }
+  }, []);
+
+  // Fetch active tasks on mount and periodically
+  useEffect(() => {
+    fetchActiveTasks();
+    const intervalId = setInterval(fetchActiveTasks, 5000);
+    return () => clearInterval(intervalId);
+  }, [fetchActiveTasks]);
+
+  // Compute ancestors of active blocks (so we don't hide them)
+  useEffect(() => {
+    async function computeAncestors() {
+      const allActiveUuids = [
+        ...activeTaskUuids,
+        ...resurfacedTasks.map((t) => t.uuid),
+      ];
+      if (allActiveUuids.length === 0) {
+        setAncestorsOfActive(new Set());
+        return;
+      }
+      const ancestors = await getAllAncestorUuids(allActiveUuids);
+      setAncestorsOfActive(ancestors);
+    }
+    computeAncestors();
+  }, [activeTaskUuids, resurfacedTasks]);
 
   // Find blocks that reference done/snoozed tasks
   useEffect(() => {
@@ -262,13 +301,15 @@ export function useHideBlocks(enabled: boolean) {
 
     const rules: string[] = [];
 
-    // Get list of done task UUIDs that should remain hidden (not in expanded parents)
+    // Get list of done task UUIDs that should remain hidden (not in expanded parents, not ancestors of active)
     const hiddenDoneUuids = [
       ...doneTasks
         .filter((t) => !expandedChildUuids.has(t.uuid) && t.uuid !== activeBlockUuid)
+        .filter((t) => !ancestorsOfActive.has(t.uuid))
         .map((t) => t.uuid),
       ...referenceBlocks
         .filter((r) => r.type === "done-ref" && !expandedChildUuids.has(r.uuid) && r.uuid !== activeBlockUuid)
+        .filter((r) => !ancestorsOfActive.has(r.uuid))
         .map((r) => r.uuid),
     ];
 
@@ -288,13 +329,15 @@ export function useHideBlocks(enabled: boolean) {
       }
     }
 
-    // Get list of snoozed UUIDs that should remain hidden (not in expanded parents)
+    // Get list of snoozed UUIDs that should remain hidden (not in expanded parents, not ancestors of active)
     const hiddenSnoozedUuids = [
       ...pendingTasks
         .filter((t) => !expandedChildUuids.has(t.uuid) && t.uuid !== activeBlockUuid)
+        .filter((t) => !ancestorsOfActive.has(t.uuid))
         .map((t) => t.uuid),
       ...referenceBlocks
         .filter((r) => r.type === "snoozed-ref" && !expandedChildUuids.has(r.uuid) && r.uuid !== activeBlockUuid)
+        .filter((r) => !ancestorsOfActive.has(r.uuid))
         .map((r) => r.uuid),
     ];
 
@@ -352,6 +395,30 @@ export function useHideBlocks(enabled: boolean) {
       }`);
     }
 
+    // Style NOW blocks - green/emerald background and left border with pulse animation
+    if (nowTaskUuids.length > 0) {
+      // Block background and left border
+      const nowBlockSelectors = nowTaskUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"]`)
+        .join(",\n");
+      rules.push(`${nowBlockSelectors} {
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        border-left: 5px solid #10b981 !important;
+        border-radius: 4px;
+        margin-left: -5px;
+        padding-left: 5px;
+        animation: now-pulse 2s ease-in-out infinite;
+      }`);
+
+      // Bullet ring - green with glow
+      const nowBulletSelectors = nowTaskUuids
+        .map((uuid) => `.ls-block[blockid="${uuid}"] .bullet-container .bullet`)
+        .join(",\n");
+      rules.push(`${nowBulletSelectors} {
+        box-shadow: 0 0 0 4px #10b981, 0 0 16px rgba(16, 185, 129, 0.6) !important;
+      }`);
+    }
+
     // Style pending snoozed blocks (when expanded/visible) - muted appearance
     const visiblePendingUuids = pendingTasks
       .filter((t) => expandedChildUuids.has(t.uuid))
@@ -380,7 +447,7 @@ export function useHideBlocks(enabled: boolean) {
     }
 
     return rules.join("\n");
-  }, [enabled, pendingTasks, resurfacedTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, activeBlockUuid]);
+  }, [enabled, pendingTasks, resurfacedTasks, doneTasks, referenceBlocks, expandedChildUuids, expandedParents, activeBlockUuid, ancestorsOfActive, nowTaskUuids]);
 
   // Inject hiding CSS
   useEffect(() => {
