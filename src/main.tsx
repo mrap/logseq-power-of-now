@@ -74,6 +74,11 @@ if (import.meta.env.VITE_MODE === "web") {
         color: #3b82f6;
         font-weight: 600;
       }
+
+      /* Hide today-queries section */
+      #today-queries {
+        display: none !important;
+      }
     `);
 
     // Register snooze keyboard shortcut
