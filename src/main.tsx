@@ -62,17 +62,9 @@ if (import.meta.env.VITE_MODE === "web") {
         box-shadow: 0 0 0 2px #3b82f6;
       }
 
-      /* Style the estimated-time property row */
+      /* Hide estimated-time property row */
       .block-properties > div:has(a[data-ref="estimated-time"]) {
-        background-color: rgba(59, 130, 246, 0.1);
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin: 2px 0;
-      }
-
-      .block-properties > div:has(a[data-ref="estimated-time"]) a[data-ref="estimated-time"] {
-        color: #3b82f6;
-        font-weight: 600;
+        display: none !important;
       }
 
       /* Hide today-queries section */

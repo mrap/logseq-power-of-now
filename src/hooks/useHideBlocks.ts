@@ -3,6 +3,7 @@ import { useSnoozedTasks } from "./useSnoozedTasks";
 import { useVisibleBlocks } from "./useVisibleBlocks";
 import { extractBlockReferences } from "../utils/hierarchyUtils";
 import { fetchBlockContents, getAllAncestorUuids } from "../utils/blockUtils";
+import { getEstimateFromBlock, formatEstimate } from "../utils/estimate";
 
 interface DoneTask {
   uuid: string;
@@ -37,6 +38,8 @@ export function useHideBlocks(enabled: boolean, nowTaskUuids: string[] = []) {
   const previousBadgeKeysRef = useRef<Set<string>>(new Set());
   const [activeTaskUuids, setActiveTaskUuids] = useState<Set<string>>(new Set());
   const [ancestorsOfActive, setAncestorsOfActive] = useState<Set<string>>(new Set());
+  const [estimateBlocks, setEstimateBlocks] = useState<Map<string, number>>(new Map());
+  const previousEstimateBadgeKeysRef = useRef<Set<string>>(new Set());
 
   // Listen for toggle messages from badges in Logseq's main window
   useEffect(() => {
@@ -136,6 +139,36 @@ export function useHideBlocks(enabled: boolean, nowTaskUuids: string[] = []) {
     const intervalId = setInterval(fetchActiveTasks, 5000);
     return () => clearInterval(intervalId);
   }, [fetchActiveTasks]);
+
+  // Query blocks with estimated-time property
+  const fetchEstimateBlocks = useCallback(async () => {
+    if (typeof logseq === "undefined") return;
+
+    try {
+      const results = await logseq.DB.q("(property estimated-time)");
+      if (!results || !Array.isArray(results)) {
+        setEstimateBlocks(new Map());
+        return;
+      }
+
+      const estimates = new Map<string, number>();
+      for (const block of results as { uuid: string; properties?: Record<string, unknown> }[]) {
+        const minutes = getEstimateFromBlock(block.properties);
+        if (minutes !== null) {
+          estimates.set(block.uuid, minutes);
+        }
+      }
+      setEstimateBlocks(estimates);
+    } catch (err) {
+      console.error("[useHideBlocks] Failed to fetch estimate blocks:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEstimateBlocks();
+    const intervalId = setInterval(fetchEstimateBlocks, 5000);
+    return () => clearInterval(intervalId);
+  }, [fetchEstimateBlocks]);
 
   // Compute ancestors of active blocks (so we don't hide them)
   useEffect(() => {
@@ -369,6 +402,15 @@ export function useHideBlocks(enabled: boolean, nowTaskUuids: string[] = []) {
         background: rgba(59, 130, 246, 0.2);
         color: #3b82f6;
       }
+      .power-of-now-estimate-badge {
+        font-size: 10px;
+        color: #3b82f6;
+        background: rgba(59, 130, 246, 0.15);
+        padding: 1px 6px;
+        border-radius: 8px;
+        margin-left: 6px;
+        font-weight: 600;
+      }
     `);
 
     // Style resurfaced snoozed blocks (urgent - need attention)
@@ -506,4 +548,44 @@ export function useHideBlocks(enabled: boolean, nowTaskUuids: string[] = []) {
 
     previousBadgeKeysRef.current = currentBadgeKeys;
   }, [enabled, parentSummaries, expandedParents, visibleUuids]);
+
+  // Inject estimate badges via provideUI
+  useEffect(() => {
+    if (typeof logseq === "undefined" || !logseq.provideUI) return;
+
+    const currentBadgeKeys = new Set<string>();
+
+    for (const [uuid, minutes] of estimateBlocks) {
+      // Only inject for visible blocks
+      if (!visibleUuids.has(uuid)) continue;
+
+      const key = `estimate-badge-${uuid}`;
+      currentBadgeKeys.add(key);
+
+      const label = formatEstimate(minutes);
+
+      try {
+        logseq.provideUI({
+          key,
+          path: `.ls-block[blockid="${uuid}"] .block-content-inner`,
+          template: `<span class="power-of-now-estimate-badge">⏱ ${label}</span>`,
+        });
+      } catch {
+        // Silently ignore - selector may not exist on current page
+      }
+    }
+
+    // Remove badges that are no longer needed
+    for (const oldKey of previousEstimateBadgeKeysRef.current) {
+      if (!currentBadgeKeys.has(oldKey)) {
+        logseq.provideUI({
+          key: oldKey,
+          path: "body",
+          template: null,
+        });
+      }
+    }
+
+    previousEstimateBadgeKeysRef.current = currentBadgeKeys;
+  }, [estimateBlocks, visibleUuids]);
 }
