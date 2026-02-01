@@ -3,6 +3,7 @@ import React from "react";
 import proxyLogseq from "logseq-proxy";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { BlockContextProvider } from "./contexts/BlockContext";
 import "./index.css";
 
 if (import.meta.env.VITE_MODE === "web") {
@@ -249,7 +250,9 @@ function renderApp() {
   const root = createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <App />
+      <BlockContextProvider>
+        <App />
+      </BlockContextProvider>
     </React.StrictMode>
   );
 }

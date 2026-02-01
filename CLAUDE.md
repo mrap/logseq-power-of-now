@@ -25,36 +25,71 @@ pnpm build:web        # Build for web mode
 src/
 ├── main.tsx          # Entry point - dual mode, keyboard shortcuts, CSS injection
 ├── App.tsx           # Main component - view tabs (TODAY/NOW/WAITING/SNOOZED)
+├── contexts/         # BlockContext - centralized data fetching
 ├── components/       # TaskItem base + task-specific wrappers
-├── hooks/            # Layered: usePolling → useTaskQuery → feature hooks
+├── hooks/            # Thin wrappers around BlockContext
 └── utils/            # Parsing, sorting, formatting utilities
 ```
 
-**Data flow**: `Logseq.DB.q()` → hooks (5s polling) → parsed/sorted data → components → `Logseq.Editor` API for updates
+**Data flow**: `BlockContextProvider` → unified polling (3 loops: 500ms, 2s, 5s) → all hooks consume context → components render → `Logseq.Editor` API for updates
 
 ## Key Engineering Patterns
 
-### Hook Composition
+### BlockContext Architecture (Centralized Data)
+
+All block data is fetched and managed by `BlockContextProvider`:
+
 ```
-usePolling        # Core: interval polling with retry
+BlockContextProvider
+├── FAST poll (500ms): activeBlockUuid only
+├── MEDIUM poll (2s): visibleUuids + route listener
+└── SLOW poll (5s, parallel Promise.all):
+    ├── (task NOW)
+    ├── (task WAITING)
+    ├── (task DONE)
+    ├── (property snoozed-until)
+    └── (task NOW LATER WAITING) for ancestors
+
+    ↓ Single atomic setState
+
+    Derived state (computed once):
+    ├── resurfacedTasks / pendingTasks
+    ├── ancestorsOfActive
+    └── parent info for all tasks
+```
+
+**Benefits:**
+- Single source of truth - no duplicate polling
+- Deterministic updates - CSS and UI always in sync
+- ~50% fewer API calls vs previous architecture
+- Ancestor filtering computed once, used everywhere
+
+### Hook Composition (Thin Wrappers)
+
+Hooks are now minimal wrappers that consume BlockContext:
+
+```
+BlockContext         # Core: unified polling, derived state
     ↓
-useTaskQuery      # Layer: query, map, sort, deduplicate
-    ↓
-useNowTasks       # Feature: specific query + comparator
+useNowTasks          # Wrapper: extracts nowTasks from context
+useWaitingTasks      # Wrapper: extracts waitingTasks from context
+useSnoozedTasks      # Wrapper: extracts snoozed + notification state
+useTodayTasks        # Wrapper: extracts todayData from context
+useHideBlocks        # Consumer: reads context for CSS generation
 ```
 
 ### Slot-based Components
 `TaskItem` provides `leftSlot`, `rightSlot`, and `secondaryText` props. Feature wrappers (`NowTaskItem`, `WaitingTaskItem`, etc.) compose these slots.
 
 ### Cross-component Communication
-- No React Context - uses props drilling
+- BlockContext for shared data (all task queries, visible blocks, active block)
 - Custom DOM events for keyboard shortcuts (main.tsx dispatches, App.tsx listens)
 
 ### Hierarchy Deduplication
 When parent and child both match a query, parent is hidden (`hierarchyUtils.ts`).
 
 ### CSS Injection
-`useHideBlocks` generates CSS to hide done/snoozed blocks, injects via `logseq.provideStyle()`.
+`useHideBlocks` consumes data from BlockContext (no independent polling), generates CSS to hide done/snoozed blocks, injects via `logseq.provideStyle()`. Ensures CSS and UI update together in same render cycle.
 
 ## Keyboard Shortcuts
 
@@ -86,9 +121,11 @@ When parent and child both match a query, parent is hidden (`hierarchyUtils.ts`)
 | File | Purpose |
 |------|---------|
 | `main.tsx:74-176` | Keyboard shortcut registration |
-| `App.tsx:32-56` | Hook usage and state |
-| `useTaskQuery.ts` | Generic task query pattern |
-| `useHideBlocks.ts` | CSS generation for hiding |
+| `main.tsx:246-258` | BlockContextProvider wrapper in renderApp() |
+| `contexts/BlockContext.tsx` | Centralized data fetching (3 polling loops, derived state) |
+| `App.tsx:32-56` | Hook usage (thin wrappers consuming context) |
+| `hooks/useHideBlocks.ts` | CSS generation consuming context (no polling) |
+| `hooks/useNowTasks.ts` | Thin wrapper extracting nowTasks from context |
 | `TaskItem.tsx` | Base component with slots |
 | `taskComparators.ts` | Sorting logic per task type |
 

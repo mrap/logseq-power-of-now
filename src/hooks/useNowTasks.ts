@@ -1,15 +1,18 @@
-import { useTaskQuery } from "./useTaskQuery";
-import { BaseTask } from "../utils/hierarchyUtils";
-import { compareNowTasks } from "../utils/taskComparators";
+import { useBlockContext } from "../contexts/BlockContext";
 
-export type NowTask = BaseTask;
+export type { NowTask } from "../contexts/BlockContext";
 
 /**
- * Hook that queries and polls for NOW tasks from Logseq
+ * Hook that queries and polls for NOW tasks from Logseq.
+ * Now a thin wrapper around BlockContext.
  */
 export function useNowTasks() {
-  return useTaskQuery<NowTask>({
-    query: "(task NOW)",
-    comparator: compareNowTasks,
-  });
+  const { nowTasks, loading, refetch } = useBlockContext();
+
+  return {
+    tasks: nowTasks,
+    loading: loading.now,
+    error: null,
+    refetch,
+  };
 }
